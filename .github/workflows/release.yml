@@ -3,7 +3,10 @@ name: Build and Release Fyne App
 on:
   push:
     tags:
-      - "v*"   # e.g., v1.0.0
+      - "v*"
+  release:
+    types: [published]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -38,15 +41,16 @@ jobs:
         run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
       - name: Build binary
+        working-directory: ./src
         run: |
           go mod tidy
           fyne package -os ${{ matrix.goos }} -arch ${{ matrix.goarch }} -icon Icon.png
-          go build -o "build/myapp-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" .
+          go build -o "../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/wago-init
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: myapp-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: wago-init-${{ matrix.goos }}-${{ matrix.goarch }}
           path: build/
 
   release:
