@@ -18,17 +18,17 @@ jobs:
           - os: ubuntu-latest
             goos: linux
             goarch: amd64
-            fyne_target: linux/amd64
+            fyne_target: linux
             ext: ""
           - os: windows-latest
             goos: windows
             goarch: amd64
-            fyne_target: windows/amd64
+            fyne_target: windows
             ext: ".exe"
           - os: macos-latest
             goos: darwin
             goarch: arm64
-            fyne_target: darwin/arm64
+            fyne_target: darwin
             ext: ""
 
     steps:
