@@ -8,11 +8,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var (
-	SerialCommand_   = "/etc/config-tools/get_typelabel_value -n UII"
-	FirmwareCommand_ = "/etc/config-tools/get_coupler_details firmware-revision"
-)
-
 func ChangeUserPasswords(client *ssh.Client, logFn func(string), newPassword string) error {
 
 	hash, err := hashPasswordSHA512(newPassword)
