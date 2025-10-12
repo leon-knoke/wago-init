@@ -1,0 +1,142 @@
+name: "CI"
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: "ubuntu-latest"
+    steps:
+    - name: Setup Go environment
+      uses: actions/setup-go@v3
+      with:
+        go-version: "1.25.x"
+
+    - name: Install staticcheck
+      run: go install honnef.co/go/tools/cmd/staticcheck@v0.5.1
+    - name: Install goimports
+      run: go install golang.org/x/tools/cmd/goimports@latest
+
+    # Checks-out the repository under $GITHUB_WORKSPACE
+    - uses: actions/checkout@v3
+
+    # Run linters
+    - name: Run go vet
+      run: go vet ./...
+    - name: Run goimports
+      run: test -z $(find . -name '*.go' -type f | xargs goimports -e -d | tee /dev/stderr)
+    - name: Run staticcheck
+      run: staticcheck ./...
+
+  test:
+    name: "Test"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # use max/min supported Go versions
+        go-version: ["1.25.x"]
+
+    steps:
+    - name: Setup Go environment
+      id: setup-go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    # Checks-out the repository under $GITHUB_WORKSPACE
+    - uses: actions/checkout@v3
+
+    # Run tests
+    - run: go test -v -cover -race ./...
+  
+  k8s:
+    name: "Verify k8s build"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # use max/min supported Go versions
+        go-version: ["1.19.x"]
+
+    steps:
+    - name: Setup Go environment
+      id: setup-go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    # Checks-out the repository under $GITHUB_WORKSPACE
+    - uses: actions/checkout@v3
+
+    # Run tests
+    - run: go build -tags k8s
+
+  build:
+    name: "Build wago-init (${{ matrix.target_os }}/${{ matrix.target_arch }})"
+    runs-on: ${{ matrix.runner }}
+    env:
+      GO111MODULE: on
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target_os: linux
+            target_arch: amd64
+            runner: ubuntu-latest
+          - target_os: windows
+            target_arch: amd64
+            runner: ubuntu-latest
+            ext: .exe
+          - target_os: darwin
+            target_arch: arm64
+            runner: macos-13
+
+    steps:
+      - name: Setup Go environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Go dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.cache/fyne-cross
+          key: ${{ runner.os }}-build-cache-${{ hashFiles('src/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-build-cache-
+
+      - name: Install fyne-cross
+        working-directory: src
+        run: go install fyne.io/fyne/v2/cmd/fyne@latest && go install github.com/fyne-io/fyne-cross/v2/cmd/fyne-cross@latest
+
+      - name: Install Docker (macOS)
+        if: ${{ runner.os == 'macOS' }}
+        uses: douglascamata/setup-docker-macos-action@v1-alpha
+
+      - name: Build with fyne-cross
+        working-directory: src
+        run: |
+          fyne-cross \
+            ${{ matrix.target_os }} \
+            -arch=${{ matrix.target_arch }} \
+            -main-pkg ./cmd/wago-init \
+            -name wago-init${{ matrix.ext }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wago-init-${{ matrix.target_os }}-${{ matrix.target_arch }}
+          path: src/fyne-cross/dist/${{ matrix.target_os }}-${{ matrix.target_arch }}
