@@ -51,11 +51,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libgl1-mesa-dev xorg-dev
 
+      - name: Go mod tidy
+        working-directory: ./src
+        shell: bash
+        run: go mod tidy
+
+      - name: Package app
+        working-directory: ./src/cmd/wago-init
+        shell: bash
+        run: fyne package --target ${{ matrix.fyne_target }}
+
       - name: Build binary
         working-directory: ./src
+        shell: bash
         run: |
-          go mod tidy
-          fyne package --target ${{ matrix.fyne_target }}
+          mkdir -p ../build
           go build -o "../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/wago-init
 
       - name: Upload build artifact
