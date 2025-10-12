@@ -1,23 +1,51 @@
 package gui
 
 import (
+	"context"
+	"fmt"
+	"strings"
+	"wago-init/internal/aws"
+	"wago-init/internal/fs"
 	"wago-init/internal/install"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 )
 
 func BuildMainWindow() {
 	a := app.New()
-	w := a.NewWindow("Installer Utility")
+	w := a.NewWindow("Wago Init")
+
+	configValues, err := fs.LoadConfig()
+	if err != nil {
+		fyne.LogError("failed to load configuration", err)
+		configValues = fs.EnvConfig{}
+	}
+
+	if configValues == nil {
+		configValues = fs.EnvConfig{}
+	}
 
 	// First row: IP Address label (natural width) + expanding entry (Border layout)
 	ipEntry := widget.NewEntry()
 	ipEntry.SetPlaceHolder(install.DefaultIp)
 	ipLabel := widget.NewLabel("IP Address:")
 	ipRow := container.NewBorder(nil, nil, ipLabel, nil, ipEntry)
+
+	configPathEntry := widget.NewEntry()
+	configPathEntry.SetText(configValues[fs.ConfigPath])
+	configPathEntry.SetPlaceHolder("Select configuration path")
+
+	searchBtn := widget.NewButton("Search", nil)
+
+	awsSettingsBtn := BuildAWSPromt(&configValues, w)
+
+	configRow := container.NewBorder(nil, nil, widget.NewLabel("Config path"), awsSettingsBtn,
+		container.NewBorder(nil, nil, nil, searchBtn, configPathEntry),
+	)
 
 	// Progress bar
 	progress := widget.NewProgressBar()
@@ -30,13 +58,15 @@ func BuildMainWindow() {
 	scroll.SetMinSize(fyne.NewSize(400, 300))
 
 	appendOutput := func(line string) {
-		if outputLabel.Text == "" {
-			outputLabel.SetText(line)
-		} else {
-			outputLabel.SetText(outputLabel.Text + "\n" + line)
-		}
-		w.Canvas().Refresh(outputLabel)
-		scroll.ScrollToBottom()
+		fyne.Do(func() {
+			if outputLabel.Text == "" {
+				outputLabel.SetText(line)
+			} else {
+				outputLabel.SetText(outputLabel.Text + "\n" + line)
+			}
+			w.Canvas().Refresh(outputLabel)
+			scroll.ScrollToBottom()
+		})
 	}
 
 	passwordPrompt := passwordPromtFunc(w)
@@ -45,7 +75,7 @@ func BuildMainWindow() {
 	startBtn := widget.NewButton("Start", nil)
 
 	startBtn.OnTapped = func() {
-		ip := ipEntry.Text
+		ip := strings.TrimSpace(ipEntry.Text)
 		startBtn.Disable()
 		ipEntry.Disable()
 		progress.SetValue(0)
@@ -57,7 +87,51 @@ func BuildMainWindow() {
 		}
 		appendOutput("")
 		go func(params install.Parameters) {
-			err := install.Install(
+			updated := cloneEnvConfig(configValues)
+			updated[fs.ConfigPath] = strings.TrimSpace(configPathEntry.Text)
+
+			if err := fs.SaveConfig(updated); err != nil {
+				fyne.Do(func() {
+					dialog.ShowError(err, w)
+					progress.SetValue(0)
+					startBtn.Enable()
+					ipEntry.Enable()
+				})
+				return
+			}
+
+			fyne.Do(func() {
+				configValues = updated
+				configPathEntry.SetText(updated[fs.ConfigPath])
+			})
+
+			awsAccessID := strings.TrimSpace(updated[fs.AWSAccessID])
+			awsAccessKey := strings.TrimSpace(updated[fs.AWSAccessKey])
+			awsRegion := strings.TrimSpace(updated[fs.AWSRegion])
+
+			if awsRegion == "" || awsAccessID == "" || awsAccessKey == "" {
+				fyne.Do(func() {
+					dialog.ShowError(fmt.Errorf("please provide AWS region, access id, and access key before starting"), w)
+					progress.SetValue(0)
+					startBtn.Enable()
+					ipEntry.Enable()
+				})
+				return
+			}
+
+			token, err := aws.FetchLoginPassword(context.Background(), awsRegion, awsAccessID, awsAccessKey)
+			if err != nil {
+				fyne.Do(func() {
+					dialog.ShowError(err, w)
+					progress.SetValue(0)
+					startBtn.Enable()
+					ipEntry.Enable()
+				})
+				return
+			}
+			appendOutput("Authorization with AWS successful")
+			params.AWSToken = token
+			err = install.Install(
 				params,
 				func(msg string) { fyne.Do(func() { appendOutput(msg) }) },
 				func(p float64) { fyne.Do(func() { progress.SetValue(p) }) },
@@ -78,6 +152,7 @@ func BuildMainWindow() {
 
 	top := container.NewVBox(
 		ipRow,
+		configRow,
 		startBtn,
 		progress,
 	)
@@ -87,4 +162,15 @@ func BuildMainWindow() {
 	w.SetContent(content)
 	w.Resize(fyne.NewSize(800, 600))
 	w.ShowAndRun()
+}
+
+func cloneEnvConfig(src fs.EnvConfig) fs.EnvConfig {
+	if src == nil {
+		return fs.EnvConfig{}
+	}
+	dst := make(fs.EnvConfig, len(src))
+	for key, value := range src {
+		dst[key] = value
+	}
+	return dst
 }

@@ -6,6 +6,7 @@ type Parameters struct {
 	Ip                string
 	PromptPassword    func() (string, bool)
 	PromptNewPassword func() (string, bool)
+	AWSToken          string
 }
 
 var usersList = []string{"root", "admin", "user"}
