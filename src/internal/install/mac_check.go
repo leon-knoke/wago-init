@@ -63,6 +63,15 @@ func lookupMAC(ip string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("arp failed: %s (output: %s)", err, strings.TrimSpace(string(out)))
 		}
+	case "linux":
+		// prefer `ip neigh show <ip>` on modern linux systems instead of the deprecated `arp`
+		out, err = exec.Command("ip", "neigh", "show", ip).CombinedOutput()
+		if err != nil {
+			out, err = exec.Command("arp", "-n", ip).CombinedOutput()
+			if err != nil {
+				return "", fmt.Errorf("ip neigh/arp failed: %s (output: %s)", err, strings.TrimSpace(string(out)))
+			}
+		}
 	default:
 		out, err = exec.Command("arp", "-n", ip).CombinedOutput()
 		if err != nil {
