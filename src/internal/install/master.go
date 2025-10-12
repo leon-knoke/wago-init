@@ -18,7 +18,7 @@ func Install(installParameters Parameters, logFn func(string), progressFn func(f
 	if err != nil {
 		return err
 	}
-	progressFn(0.05)
+	progressFn(0.04)
 
 	err = CheckSSH(params, logFn)
 	if err != nil {
