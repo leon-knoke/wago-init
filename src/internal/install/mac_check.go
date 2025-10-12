@@ -10,8 +10,8 @@ import (
 )
 
 var allowedOUIs = []string{
+	// normalized OUI (lowercase, two hex digits per octet)
 	"00:30:de",
-	"0:30:de",
 }
 
 func CheckMacAddress(installParameters Parameters, logFn func(string)) error {
@@ -26,12 +26,11 @@ func CheckMacAddress(installParameters Parameters, logFn func(string)) error {
 	}
 	logFn("Device MAC address: " + mac)
 
+	// mac returned by lookupMAC is normalized (xx:xx:xx:...)
+	parts := strings.Split(mac, ":")
 	oui := mac
-	if idx := strings.Index(mac, ":"); idx != -1 {
-		parts := strings.Split(mac, ":")
-		if len(parts) >= 3 {
-			oui = strings.ToLower(strings.Join(parts[:3], ":"))
-		}
+	if len(parts) >= 3 {
+		oui = strings.ToLower(strings.Join(parts[:3], ":"))
 	}
 	for _, allowed := range allowedOUIs {
 		if oui == allowed {
@@ -79,13 +78,33 @@ func lookupMAC(ip string) (string, error) {
 }
 
 func extractMAC(s string) (string, error) {
-	re := regexp.MustCompile(`(?i)(?:[0-9a-f]{1,2}:){5}[0-9a-f]{1,2}`)
+	re := regexp.MustCompile(`(?i)(?:[0-9a-f]{1,2}(?:[:\-])){5}[0-9a-f]{1,2}`)
 	m := re.FindString(s)
 	if m == "" {
 		return "", fmt.Errorf("no mac address found")
 	}
-	if m[1] == '-' || m[1] == ':' {
-		m = "0" + m
+	normalized, err := normalizeMAC(m)
+	if err != nil {
+		return "", err
 	}
-	return m, nil
+	return normalized, nil
+}
+
+func normalizeMAC(raw string) (string, error) {
+	r := strings.ReplaceAll(raw, "-", ":")
+	r = strings.ToLower(r)
+	parts := strings.Split(r, ":")
+	if len(parts) != 6 {
+		return "", fmt.Errorf("unexpected mac format: %s", raw)
+	}
+	for i, p := range parts {
+		if len(p) == 1 {
+			parts[i] = "0" + p
+		} else if len(p) == 2 {
+			// ok
+		} else {
+			return "", fmt.Errorf("unexpected mac octet: %s", p)
+		}
+	}
+	return strings.Join(parts, ":"), nil
 }
