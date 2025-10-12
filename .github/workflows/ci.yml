@@ -1,71 +1,81 @@
-name: "CI"
+name: Build and Release
+
 on:
   push:
-    branches:
-      - main
-  pull_request:
+    tags:
+      - "v*"
+    branches: [ "main" ]
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
   build:
-    name: "Build wago-init (${{ matrix.target_os }}/${{ matrix.target_arch }})"
-    runs-on: ${{ matrix.runner }}
-    env:
-      GO111MODULE: on
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         include:
-          - target_os: linux
-            target_arch: amd64
-            runner: ubuntu-latest
-          - target_os: windows
-            target_arch: amd64
-            runner: ubuntu-latest
-            ext: .exe
-          - target_os: darwin
-            target_arch: arm64
-            runner: macos-13
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            fyne_target: linux
+            ext: ""
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            fyne_target: windows
+            ext: ".exe"
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            fyne_target: darwin
+            ext: ""
 
     steps:
-      - name: Setup Go environment
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22.x"
-
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache Go dependencies
-        uses: actions/cache@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/.cache/fyne-cross
-          key: ${{ runner.os }}-build-cache-${{ hashFiles('src/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-build-cache-
+          go-version: "1.25.2"
 
-      - name: Install fyne-cross
-        working-directory: src
-        run: go install fyne.io/fyne/v2/cmd/fyne@latest && go install github.com/fyne-io/fyne-cross@latest
+      - name: Install fyne command
+        run: go install fyne.io/tools/cmd/fyne@latest
 
-      # - name: Install Docker (macOS)
-      #   if: ${{ runner.os == 'macOS' }}
-      #   uses: douglascamata/setup-docker-macos-action@v1-alpha
-
-      - name: Build with fyne-cross
-        working-directory: src
+      - name: Install Linux build deps
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          fyne-cross \
-            ${{ matrix.target_os }} \
-            -arch=${{ matrix.target_arch }} \
-            -name wago-init${{ matrix.ext }} \
-            ./cmd/wago-init
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgl1-mesa-dev xorg-dev
 
-      - name: Upload build artifacts
+      - name: Build binary
+        working-directory: ./src
+        run: |
+          go mod tidy
+          fyne package --target ${{ matrix.fyne_target }}
+          go build -o "../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/wago-init
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wago-init-${{ matrix.target_os }}-${{ matrix.target_arch }}
-          path: src/fyne-cross/dist/${{ matrix.target_os }}-${{ matrix.target_arch }}
+          name: wago-init-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: build/
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
