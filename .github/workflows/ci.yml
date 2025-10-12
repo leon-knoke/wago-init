@@ -51,9 +51,9 @@ jobs:
         working-directory: src
         run: go install fyne.io/fyne/v2/cmd/fyne@latest && go install github.com/fyne-io/fyne-cross@latest
 
-      - name: Install Docker (macOS)
-        if: ${{ runner.os == 'macOS' }}
-        uses: douglascamata/setup-docker-macos-action@v1-alpha
+      # - name: Install Docker (macOS)
+      #   if: ${{ runner.os == 'macOS' }}
+      #   uses: douglascamata/setup-docker-macos-action@v1-alpha
 
       - name: Build with fyne-cross
         working-directory: src
@@ -61,8 +61,8 @@ jobs:
           fyne-cross \
             ${{ matrix.target_os }} \
             -arch=${{ matrix.target_arch }} \
-            -main-pkg ./cmd/wago-init \
-            -name wago-init${{ matrix.ext }}
+            -name wago-init${{ matrix.ext }} \
+            ./cmd/wago-init
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
