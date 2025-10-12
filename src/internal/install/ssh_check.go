@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
 
 var (
@@ -12,16 +14,10 @@ var (
 	FirmwareCommand = "/etc/config-tools/get_coupler_details firmware-revision"
 )
 
-func CheckSSH(installParameters Parameters, logFn func(string)) error {
-	ip := installParameters.Ip
-	conn, err := InitSshClient(ip)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func CheckSSH(client *ssh.Client, logFn func(string)) error {
 	logFn("Connection to device established")
 
-	serialOut, err := runSSHCommand(conn, SerialCommand, shortSessionTimeout)
+	serialOut, err := runSSHCommand(client, SerialCommand, shortSessionTimeout)
 	if err != nil {
 		return err
 	}
@@ -32,7 +28,7 @@ func CheckSSH(installParameters Parameters, logFn func(string)) error {
 	}
 	logFn("Device serial number: " + serial)
 
-	fwOut, err := runSSHCommand(conn, FirmwareCommand, shortSessionTimeout)
+	fwOut, err := runSSHCommand(client, FirmwareCommand, shortSessionTimeout)
 	if err != nil {
 		return err
 	}

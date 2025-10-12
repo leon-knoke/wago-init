@@ -39,6 +39,9 @@ func BuildMainWindow() {
 		scroll.ScrollToBottom()
 	}
 
+	passwordPrompt := passwordPromtFunc(w)
+	passwordNewPrompt := newPasswordPromtFunc(w)
+
 	startBtn := widget.NewButton("Start", nil)
 
 	startBtn.OnTapped = func() {
@@ -48,7 +51,9 @@ func BuildMainWindow() {
 		progress.SetValue(0)
 
 		installParameters := install.Parameters{
-			Ip: ip,
+			Ip:                ip,
+			PromptPassword:    passwordPrompt,
+			PromptNewPassword: passwordNewPrompt,
 		}
 		appendOutput("")
 		go func(params install.Parameters) {

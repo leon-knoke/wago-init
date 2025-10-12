@@ -18,21 +18,50 @@ var (
 	longSessionTimeout  = 60 * time.Second
 )
 
-func InitSshClient(ip string) (*ssh.Client, error) {
+func InitSshClient(ip string, promptPassword func() (string, bool)) (*ssh.Client, error) {
 	addr := net.JoinHostPort(ip, "22")
+	password := DefaultSSHPassword
 
+	for {
+		client, err := dialSSH(addr, password)
+		if err == nil {
+			return client, nil
+		}
+
+		if !isAuthError(err) {
+			return nil, fmt.Errorf("ssh dial failed: %w", err)
+		}
+
+		if promptPassword == nil {
+			return nil, fmt.Errorf("ssh authentication failed: %w", err)
+		}
+
+		pwd, ok := promptPassword()
+		if !ok {
+			return nil, fmt.Errorf("ssh authentication cancelled by user")
+		}
+		password = pwd
+	}
+}
+
+func dialSSH(addr, password string) (*ssh.Client, error) {
 	config := &ssh.ClientConfig{
 		User:            DefaultSSHUser,
-		Auth:            []ssh.AuthMethod{ssh.Password(DefaultSSHPassword)},
+		Auth:            []ssh.AuthMethod{ssh.Password(password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         sshTimeout,
 	}
 
-	conn, err := ssh.Dial("tcp", addr, config)
-	if err != nil {
-		return nil, fmt.Errorf("ssh dial failed: %w", err)
+	return ssh.Dial("tcp", addr, config)
+}
+
+func isAuthError(err error) bool {
+	if err == nil {
+		return false
 	}
-	return conn, nil
+
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "unable to authenticate") || strings.Contains(msg, "permission denied")
 }
 
 func runSSHCommand(client *ssh.Client, cmd string, timeout time.Duration) (string, error) {

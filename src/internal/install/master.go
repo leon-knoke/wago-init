@@ -20,21 +20,39 @@ func Install(installParameters Parameters, logFn func(string), progressFn func(f
 	}
 	progressFn(0.04)
 
-	err = CheckSSH(params, logFn)
+	ip := params.Ip
+	client, err := InitSshClient(ip, params.PromptPassword)
+	if err != nil {
+		return err
+	}
+
+	err = CheckSSH(client, logFn)
 	if err != nil {
 		return err
 	}
 	progressFn(0.1)
 
-	err = ConfigureServices(params, logFn)
+	newPassword, ok := params.PromptNewPassword()
+	if !ok {
+		return errors.New("new password prompt cancelled by user")
+	}
+
+	err = ChangeUserPasswords(client, logFn, newPassword)
 	if err != nil {
 		return err
 	}
 	progressFn(0.15)
 
+	err = ConfigureServices(client, logFn)
+	if err != nil {
+		return err
+	}
+	progressFn(0.2)
+
 	logFn("Installation complete.")
 	progressFn(1)
 
+	client.Close()
 	return nil
 }
 

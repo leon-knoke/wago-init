@@ -24,7 +24,6 @@ func CheckMacAddress(installParameters Parameters, logFn func(string)) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve MAC for %s: %w", ip, err)
 	}
-	logFn("Device MAC address: " + mac)
 
 	// mac returned by lookupMAC is normalized (xx:xx:xx:...)
 	parts := strings.Split(mac, ":")
@@ -34,6 +33,7 @@ func CheckMacAddress(installParameters Parameters, logFn func(string)) error {
 	}
 	for _, allowed := range allowedOUIs {
 		if oui == allowed {
+			logFn("Device MAC address: " + mac)
 			return nil
 		}
 	}
