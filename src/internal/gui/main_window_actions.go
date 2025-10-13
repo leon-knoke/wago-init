@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 	"wago-init/internal/aws"
 	"wago-init/internal/fs"
 	"wago-init/internal/install"
@@ -75,13 +76,14 @@ func (mv *mainView) updateProgress(value float64) {
 }
 
 func (mv *mainView) appendOutput(line string) {
+	timestamp := time.Now().Format("15:04:05")
+	formatted := fmt.Sprintf("[%s] %s", timestamp, line)
 	mv.runOnUI(func() {
-		if mv.outputLabel.Text == "" {
-			mv.outputLabel.SetText(line)
+		if mv.outputEntry.Text == "" {
+			mv.outputEntry.SetText(formatted)
 		} else {
-			mv.outputLabel.SetText(mv.outputLabel.Text + "\n" + line)
+			mv.outputEntry.SetText(mv.outputEntry.Text + "\n" + formatted)
 		}
-		mv.window.Canvas().Refresh(mv.outputLabel)
 		mv.outputScroll.ScrollToBottom()
 	})
 }

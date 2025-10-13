@@ -11,7 +11,7 @@ import (
 )
 
 func BuildContainerPrompt(configValues *fs.EnvConfig, w fyne.Window) *widget.Button {
-	containerBtn := widget.NewButton("Container flags", func() {
+	containerBtn := widget.NewButton("Container settings", func() {
 		values := fs.EnvConfig{}
 		if configValues != nil && *configValues != nil {
 			values = *configValues

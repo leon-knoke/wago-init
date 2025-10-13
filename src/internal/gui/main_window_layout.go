@@ -56,10 +56,12 @@ func (mv *mainView) setupOutputArea() {
 	mv.progress = widget.NewProgressBar()
 	mv.progress.SetValue(0)
 
-	mv.outputLabel = widget.NewLabel("")
-	mv.outputLabel.Wrapping = fyne.TextWrapWord
+	mv.outputEntry = widget.NewMultiLineEntry()
+	mv.outputEntry.SetMinRowsVisible(14)
+	mv.outputEntry.Wrapping = fyne.TextWrapWord
+	mv.outputEntry.TextStyle = fyne.TextStyle{Monospace: true}
 
-	mv.outputScroll = container.NewVScroll(mv.outputLabel)
+	mv.outputScroll = container.NewVScroll(mv.outputEntry)
 	mv.outputScroll.SetMinSize(fyne.NewSize(400, 300))
 }
 

@@ -17,7 +17,7 @@ type mainView struct {
 	configPathEntry      *widget.Entry
 	startBtn             *widget.Button
 	progress             *widget.ProgressBar
-	outputLabel          *widget.Label
+	outputEntry          *widget.Entry
 	outputScroll         *container.Scroll
 	passwordPrompt       func() (string, bool)
 	newPasswordPrompt    func() (string, bool)
