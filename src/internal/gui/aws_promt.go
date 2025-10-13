@@ -61,7 +61,7 @@ func BuildAWSPromt(configValues *fs.EnvConfig, w fyne.Window) *widget.Button {
 			},
 			w,
 		)
-		d.Resize(fyne.NewSize(400, 180))
+		d.Resize(fyne.NewSize(500, 250))
 		d.Show()
 	})
 	return awsSettingsBtn
