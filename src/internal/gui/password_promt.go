@@ -70,7 +70,7 @@ func newPasswordPromtFunc(parent fyne.Window) func() (string, bool) {
 				}
 			})
 			form := dialog.NewForm(
-				"New Password required. Enter a new secure Password for the device",
+				"New Password required.\nEnter a new secure Password for the device",
 				"Change Password",
 				"Cancel",
 				[]*widget.FormItem{

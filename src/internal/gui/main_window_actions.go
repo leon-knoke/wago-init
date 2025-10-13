@@ -41,10 +41,6 @@ func (mv *mainView) runInstallation(params install.Parameters) {
 		mv.configPathEntry.SetText(updated[fs.ConfigPath])
 	})
 
-	if containerCmd := install.BuildContainerCommand(updated); containerCmd != "" {
-		mv.appendOutput("Container command preview: " + containerCmd)
-	}
-
 	awsAccessID := strings.TrimSpace(updated[fs.AWSAccessID])
 	awsAccessKey := strings.TrimSpace(updated[fs.AWSAccessKey])
 	awsRegion := strings.TrimSpace(updated[fs.AWSRegion])
