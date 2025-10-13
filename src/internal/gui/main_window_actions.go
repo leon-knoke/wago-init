@@ -76,8 +76,10 @@ func (mv *mainView) updateProgress(value float64) {
 }
 
 func (mv *mainView) appendOutput(line string) {
-	timestamp := time.Now().Format("15:04:05")
-	formatted := fmt.Sprintf("[%s] %s", timestamp, line)
+	formatted := ""
+	if line != formatted {
+		formatted = fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), line)
+	}
 	mv.runOnUI(func() {
 		if mv.outputText == "" {
 			mv.outputText = formatted
