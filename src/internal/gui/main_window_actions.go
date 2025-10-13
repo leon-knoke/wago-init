@@ -79,11 +79,14 @@ func (mv *mainView) appendOutput(line string) {
 	timestamp := time.Now().Format("15:04:05")
 	formatted := fmt.Sprintf("[%s] %s", timestamp, line)
 	mv.runOnUI(func() {
-		if mv.outputEntry.Text == "" {
-			mv.outputEntry.SetText(formatted)
+		if mv.outputText == "" {
+			mv.outputText = formatted
 		} else {
-			mv.outputEntry.SetText(mv.outputEntry.Text + "\n" + formatted)
+			mv.outputText += "\n" + formatted
 		}
+		mv.outputUpdating = true
+		mv.outputEntry.SetText(mv.outputText)
+		mv.outputUpdating = false
 		mv.outputScroll.ScrollToBottom()
 	})
 }

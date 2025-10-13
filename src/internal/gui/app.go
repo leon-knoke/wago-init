@@ -19,6 +19,8 @@ type mainView struct {
 	progress             *widget.ProgressBar
 	outputEntry          *widget.Entry
 	outputScroll         *container.Scroll
+	outputText           string
+	outputUpdating       bool
 	passwordPrompt       func() (string, bool)
 	newPasswordPrompt    func() (string, bool)
 	containerSettingsBtn *widget.Button

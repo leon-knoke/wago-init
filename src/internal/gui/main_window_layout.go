@@ -60,6 +60,14 @@ func (mv *mainView) setupOutputArea() {
 	mv.outputEntry.SetMinRowsVisible(14)
 	mv.outputEntry.Wrapping = fyne.TextWrapWord
 	mv.outputEntry.TextStyle = fyne.TextStyle{Monospace: true}
+	mv.outputEntry.OnChanged = func(s string) {
+		if mv.outputUpdating {
+			return
+		}
+		mv.outputUpdating = true
+		mv.outputEntry.SetText(mv.outputText)
+		mv.outputUpdating = false
+	}
 
 	mv.outputScroll = container.NewVScroll(mv.outputEntry)
 	mv.outputScroll.SetMinSize(fyne.NewSize(400, 300))
