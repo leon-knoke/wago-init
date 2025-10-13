@@ -19,7 +19,7 @@ import (
 )
 
 func BuildMainWindow() {
-	a := app.New()
+	a := app.NewWithID("wago-init-app")
 	w := a.NewWindow("Wago Init")
 
 	configValues, err := fs.LoadConfig()
