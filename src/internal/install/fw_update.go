@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -25,7 +26,7 @@ const (
 	firmwareLogPollInterval   = 10 * time.Second
 )
 
-func UpdateFirmware(client *ssh.Client, logFn func(string), params *Parameters) (*ssh.Client, error) {
+func UpdateFirmware(client *ssh.Client, logFn func(string), params *Parameters, progressFn func(float64)) (*ssh.Client, error) {
 	if params == nil {
 		return client, errors.New("firmware parameters are nil")
 	}
@@ -44,27 +45,35 @@ func UpdateFirmware(client *ssh.Client, logFn func(string), params *Parameters) 
 		return client, err
 	}
 
-	// if _, err := runSSHCommand(client, "rm -rf /home/update/* && mkdir -p /home/update", longSessionTimeout); err != nil {
-	// 	return client, fmt.Errorf("prepare remote firmware directory: %w", err)
-	// }
+	if _, err := runSSHCommand(client, "rm -rf /home/update/* && mkdir -p /home/update", longSessionTimeout); err != nil {
+		return client, fmt.Errorf("prepare remote firmware directory: %w", err)
+	}
 
-	// logFn("Uploading firmware package to device")
-	// if err := CopyPathToDevice(client, localPath, firmwareRemoteDir, logFn); err != nil {
-	// 	return client, fmt.Errorf("upload firmware: %w", err)
-	// }
+	progressFn(0.1)
 
-	// remoteFileName := filepath.Base(localPath)
-	// remoteFilePath := path.Join(firmwareRemoteDir, remoteFileName)
+	logFn("Uploading firmware package to device")
+	if err := CopyPathToDevice(client, localPath, firmwareRemoteDir, logFn); err != nil {
+		return client, fmt.Errorf("upload firmware: %w", err)
+	}
 
-	// unzipCmd := fmt.Sprintf("cd %s && unzip -o %s", shellQuote(firmwareRemoteDir), shellQuote(remoteFileName))
-	// logFn("Extracting firmware package on device")
-	// if err := runSSHCommandStreaming(client, unzipCmd, firmwareUnzipTimeout, logFn); err != nil {
-	// 	return client, fmt.Errorf("unzip firmware: %w", err)
-	// }
+	progressFn(0.2)
 
-	// if _, err := runSSHCommand(client, fmt.Sprintf("rm -f %s", shellQuote(remoteFilePath)), shortSessionTimeout); err != nil {
-	// 	return client, fmt.Errorf("cleanup firmware archive: %w", err)
-	// }
+	remoteFileName := filepath.Base(localPath)
+	remoteFilePath := path.Join(firmwareRemoteDir, remoteFileName)
+
+	unzipCmd := fmt.Sprintf("cd %s && unzip -o %s", shellQuote(firmwareRemoteDir), shellQuote(remoteFileName))
+	logFn("Extracting firmware package on device")
+	if err := runSSHCommandStreaming(client, unzipCmd, firmwareUnzipTimeout, logFn); err != nil {
+		return client, fmt.Errorf("unzip firmware: %w", err)
+	}
+
+	progressFn(0.24)
+
+	if _, err := runSSHCommand(client, fmt.Sprintf("rm -f %s", shellQuote(remoteFilePath)), shortSessionTimeout); err != nil {
+		return client, fmt.Errorf("cleanup firmware archive: %w", err)
+	}
+
+	progressFn(0.25)
 
 	logFn("Activating firmware daemon")
 	if err := runSSHCommandStreaming(client, "/etc/config-tools/fwupdate activate [--keep-application]", firmwareActivateTimeout, logFn); err != nil {
@@ -73,6 +82,8 @@ func UpdateFirmware(client *ssh.Client, logFn func(string), params *Parameters) 
 	}
 
 	time.Sleep(firmwareInitialWait)
+
+	progressFn(0.27)
 
 	startCmd := fmt.Sprintf("/etc/config-tools/fwupdate start --path %s", firmwareRemoteDir)
 	startErr := runSSHCommandStreaming(client, startCmd, firmwareStartTimeout, logFn)
@@ -87,6 +98,8 @@ func UpdateFirmware(client *ssh.Client, logFn func(string), params *Parameters) 
 
 	logFn("Device connection lost, waiting for reboot to complete...")
 
+	progressFn(0.40)
+
 	_ = client.Close()
 
 	time.Sleep(firmwareInitialWait)
@@ -97,6 +110,8 @@ func UpdateFirmware(client *ssh.Client, logFn func(string), params *Parameters) 
 		return client, err
 	}
 	params.CurrentPassword = newPassword
+
+	progressFn(0.59)
 
 	finishCmd := "/etc/config-tools/fwupdate finish"
 	logFn("Finalising firmware update")
