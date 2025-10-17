@@ -47,6 +47,7 @@ func (mv *mainView) setupEntries() {
 func (mv *mainView) setupButtons() {
 	mv.awsSettingsBtn = BuildAWSPromt(&mv.configValues, mv.window)
 	mv.containerSettingsBtn = BuildContainerPrompt(&mv.configValues, mv.window)
+	mv.firmwareSettingsBtn = BuildFirmwarePrompt(&mv.configValues, mv.window)
 	mv.deviceDiscoveryBtn = widget.NewButton("Device discovery", func() {
 		dialog.ShowInformation("Device discovery", "Coming soon.", mv.window)
 	})
@@ -80,7 +81,14 @@ func (mv *mainView) setupStartButton() {
 func (mv *mainView) buildIPRow() fyne.CanvasObject {
 	ipLabel := widget.NewLabel("IP Address  ")
 	ipControls := container.NewBorder(nil, nil, nil, container.NewHBox(widget.NewLabel(" "), mv.deviceDiscoveryBtn), mv.ipEntry)
-	right := container.NewHBox(widget.NewLabel("  "), mv.containerSettingsBtn, widget.NewLabel("  "), mv.awsSettingsBtn)
+	right := container.NewHBox(
+		widget.NewLabel("  "),
+		mv.containerSettingsBtn,
+		widget.NewLabel("  "),
+		mv.awsSettingsBtn,
+		widget.NewLabel("  "),
+		mv.firmwareSettingsBtn,
+	)
 	return container.NewBorder(nil, nil, ipLabel, right, ipControls)
 }
 

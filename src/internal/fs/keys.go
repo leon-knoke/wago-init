@@ -9,4 +9,6 @@ var (
 	ContainerImage   = "CONTAINER_IMAGE"
 	IpAddress        = "IP_ADDRESS"
 	ContainerCommand = "CONTAINER_COMMAND"
+	FirmwareRevision = "FIRMWARE_REVISION"
+	FirmwarePath     = "FIRMWARE_PATH"
 )

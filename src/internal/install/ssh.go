@@ -21,27 +21,27 @@ var (
 	longSessionTimeout  = 60 * time.Second
 )
 
-func InitSshClient(ip string, promptPassword func() (string, bool)) (*ssh.Client, error) {
+func InitSshClient(ip string, promptPassword func() (string, bool)) (*ssh.Client, string, error) {
 	addr := net.JoinHostPort(ip, "22")
 	password := DefaultSSHPassword
 
 	for {
 		client, err := dialSSH(addr, password)
 		if err == nil {
-			return client, nil
+			return client, password, nil
 		}
 
 		if !isAuthError(err) {
-			return nil, fmt.Errorf("ssh dial failed: %w", err)
+			return nil, password, fmt.Errorf("ssh dial failed: %w", err)
 		}
 
 		if promptPassword == nil {
-			return nil, fmt.Errorf("ssh authentication failed: %w", err)
+			return nil, password, fmt.Errorf("ssh authentication failed: %w", err)
 		}
 
 		pwd, ok := promptPassword()
 		if !ok {
-			return nil, fmt.Errorf("ssh authentication cancelled by user")
+			return nil, password, fmt.Errorf("ssh authentication cancelled by user")
 		}
 		password = pwd
 	}

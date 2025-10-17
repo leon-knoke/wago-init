@@ -21,14 +21,18 @@ func Install(installParameters Parameters, logFn func(string), progressFn func(f
 	progressFn(0.04)
 
 	ip := params.Ip
-	client, err := InitSshClient(ip, params.PromptPassword)
+	client, _, err := InitSshClient(ip, params.PromptPassword)
 	if err != nil {
 		return err
 	}
 
-	err = CheckSSH(client, logFn)
+	fwUpdateRequired, err := CheckSSH(client, logFn, params.NewestFirmware)
 	if err != nil {
 		return err
+	}
+	if fwUpdateRequired {
+		logFn("Firmware update required. Starting update...")
+		err = UpdateFirmware(client, logFn, params, progressFn)
 	}
 	progressFn(0.1)
 
@@ -49,11 +53,15 @@ func Install(installParameters Parameters, logFn func(string), progressFn func(f
 	}
 	progressFn(0.2)
 
-	err = CreateContainer(client, logFn, params)
-	if err != nil {
-		return err
-	}
+	// err = CreateContainer(client, logFn, params)
+	// if err != nil {
+	// 	return err
+	// }
 	progressFn(0.8)
+
+	CopyPathToDevice(client, params.ConfigPath, "/root", logFn)
+
+	progressFn(0.9)
 
 	logFn("Installation complete.")
 	progressFn(1)

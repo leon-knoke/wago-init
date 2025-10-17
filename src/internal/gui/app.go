@@ -25,6 +25,7 @@ type mainView struct {
 	newPasswordPrompt    func() (string, bool)
 	containerSettingsBtn *widget.Button
 	awsSettingsBtn       *widget.Button
+	firmwareSettingsBtn  *widget.Button
 	deviceDiscoveryBtn   *widget.Button
 }
 

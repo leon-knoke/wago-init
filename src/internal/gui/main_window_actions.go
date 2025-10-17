@@ -64,6 +64,7 @@ func (mv *mainView) runInstallation(params install.Parameters) {
 	mv.appendOutput("Authorization with AWS successful")
 	params.AWSToken = token
 	params.AWSEcrUrl = ecrUrl
+	params.ConfigPath = strings.TrimSpace(mv.configValues[fs.ConfigPath])
 
 	err = install.Install(
 		params,

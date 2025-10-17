@@ -14,35 +14,40 @@ var (
 	FirmwareCommand = "/etc/config-tools/get_coupler_details firmware-revision"
 )
 
-func CheckSSH(client *ssh.Client, logFn func(string)) error {
+func CheckSSH(client *ssh.Client, logFn func(string), newestFirmware string) (bool, error) {
 	logFn("Connection to device established")
+
+	fwUpdateRequired := false
 
 	serialOut, err := runSSHCommand(client, SerialCommand, shortSessionTimeout)
 	if err != nil {
-		return err
+		return fwUpdateRequired, err
 	}
 
 	serial := parseSerial(serialOut)
 	if serial == "" {
-		return errors.New("serial output empty after parsing")
+		return fwUpdateRequired, errors.New("serial output empty after parsing")
 	}
 	logFn("Device serial number: " + serial)
 
 	fwOut, err := runSSHCommand(client, FirmwareCommand, shortSessionTimeout)
 	if err != nil {
-		return err
+		return fwUpdateRequired, err
 	}
 	fwFull, fwBuild := parseFirmwareBuild(fwOut)
 	if fwFull == "" {
-		return errors.New("firmware output empty")
+		return fwUpdateRequired, errors.New("firmware output empty")
 	}
 	if fwBuild != "" {
 		logFn(fmt.Sprintf("Firmware revision: %s", fwBuild))
+		if fwBuild < newestFirmware {
+			fwUpdateRequired = true
+		}
 	} else {
 		logFn("Firmware revision: " + fwFull + " (build number not detected)")
 	}
 
-	return nil
+	return fwUpdateRequired, nil
 }
 
 func parseSerial(raw string) string {
