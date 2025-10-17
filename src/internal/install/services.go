@@ -3,8 +3,10 @@ package install
 import "golang.org/x/crypto/ssh"
 
 var (
-	NtpCommand    = "/etc/config-tools/config_sntp state=enabled time-server-1=pool.ntp.org update-time=600"
-	DockerCommand = "/etc/config-tools/config_docker activate"
+	NtpCommand             = "/etc/config-tools/config_sntp state=enabled time-server-1=pool.ntp.org update-time=600"
+	DockerCommand          = "/etc/config-tools/config_docker activate"
+	DockerRemoveContainers = "docker rm -vf $(docker ps -aq)"
+	DockerRemoveImages     = "docker rmi -f $(docker images -aq)"
 )
 
 func ConfigureServices(client *ssh.Client, logFn func(string)) error {
@@ -19,6 +21,17 @@ func ConfigureServices(client *ssh.Client, logFn func(string)) error {
 		return err
 	}
 	logFn("Docker Service activated " + dockerOut)
+
+	_, err = runSSHCommand(client, DockerRemoveContainers, longSessionTimeout)
+	if err != nil {
+		return err
+	}
+
+	_, err = runSSHCommand(client, DockerRemoveImages, longSessionTimeout)
+	if err != nil {
+		return err
+	}
+	logFn("Removed existing Docker containers and images")
 
 	return nil
 }

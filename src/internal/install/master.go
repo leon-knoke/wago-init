@@ -49,6 +49,12 @@ func Install(installParameters Parameters, logFn func(string), progressFn func(f
 	}
 	progressFn(0.2)
 
+	err = CreateContainer(client, logFn, params)
+	if err != nil {
+		return err
+	}
+	progressFn(0.8)
+
 	logFn("Installation complete.")
 	progressFn(1)
 

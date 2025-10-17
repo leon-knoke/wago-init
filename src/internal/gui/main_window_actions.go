@@ -22,6 +22,8 @@ func (mv *mainView) handleStart() {
 		Ip:                strings.TrimSpace(mv.ipEntry.Text),
 		PromptPassword:    mv.passwordPrompt,
 		PromptNewPassword: mv.newPasswordPrompt,
+		ContainerImage:    mv.configValues[fs.ContainerImage],
+		ContainerFlags:    install.BuildContainerCommand(mv.configValues[fs.ContainerCommand]),
 	}
 
 	go mv.runInstallation(params)
@@ -42,12 +44,13 @@ func (mv *mainView) runInstallation(params install.Parameters) {
 		mv.configPathEntry.SetText(updated[fs.ConfigPath])
 	})
 
+	awsRegion := strings.TrimSpace(updated[fs.AWSRegion])
+	awsAccountID := strings.TrimSpace(updated[fs.AWSAccountID])
 	awsAccessID := strings.TrimSpace(updated[fs.AWSAccessID])
 	awsAccessKey := strings.TrimSpace(updated[fs.AWSAccessKey])
-	awsRegion := strings.TrimSpace(updated[fs.AWSRegion])
 
-	if awsRegion == "" || awsAccessID == "" || awsAccessKey == "" {
-		mv.failWithError(fmt.Errorf("please provide AWS region, access id, and access key before starting"))
+	if awsRegion == "" || awsAccessID == "" || awsAccessKey == "" || awsAccountID == "" {
+		mv.failWithError(fmt.Errorf("please provide AWS region, account id, access id, and access key before starting"))
 		return
 	}
 
@@ -56,9 +59,11 @@ func (mv *mainView) runInstallation(params install.Parameters) {
 		mv.failWithError(err)
 		return
 	}
+	ecrUrl := aws.GetEcrUrl(awsAccountID, awsRegion)
 
 	mv.appendOutput("Authorization with AWS successful")
 	params.AWSToken = token
+	params.AWSEcrUrl = ecrUrl
 
 	err = install.Install(
 		params,

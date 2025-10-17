@@ -7,6 +7,9 @@ type Parameters struct {
 	PromptPassword    func() (string, bool)
 	PromptNewPassword func() (string, bool)
 	AWSToken          string
+	AWSEcrUrl         string
+	ContainerImage    string
+	ContainerFlags    string
 }
 
 var usersList = []string{"root", "admin", "user"}

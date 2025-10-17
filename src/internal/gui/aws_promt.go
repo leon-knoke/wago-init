@@ -19,6 +19,9 @@ func BuildAWSPromt(configValues *fs.EnvConfig, w fyne.Window) *widget.Button {
 		awsRegionEntry := widget.NewEntry()
 		awsRegionEntry.SetText(values[fs.AWSRegion])
 
+		accountIDEntry := widget.NewEntry()
+		accountIDEntry.SetText(values[fs.AWSAccountID])
+
 		accessIDEntry := widget.NewEntry()
 		accessIDEntry.SetText(values[fs.AWSAccessID])
 
@@ -27,6 +30,7 @@ func BuildAWSPromt(configValues *fs.EnvConfig, w fyne.Window) *widget.Button {
 
 		form := widget.NewForm(
 			widget.NewFormItem("AWS Region", awsRegionEntry),
+			widget.NewFormItem("Account ID", accountIDEntry),
 			widget.NewFormItem("Access ID", accessIDEntry),
 			widget.NewFormItem("Access Key", accessKeyEntry),
 		)
@@ -47,6 +51,7 @@ func BuildAWSPromt(configValues *fs.EnvConfig, w fyne.Window) *widget.Button {
 				}
 
 				updated[fs.AWSRegion] = strings.TrimSpace(awsRegionEntry.Text)
+				updated[fs.AWSAccountID] = strings.TrimSpace(accountIDEntry.Text)
 				updated[fs.AWSAccessID] = strings.TrimSpace(accessIDEntry.Text)
 				updated[fs.AWSAccessKey] = strings.TrimSpace(accessKeyEntry.Text)
 
