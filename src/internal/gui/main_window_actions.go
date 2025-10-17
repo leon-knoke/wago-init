@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 	"wago-init/internal/aws"
 	"wago-init/internal/fs"
 	"wago-init/internal/install"
@@ -107,10 +108,27 @@ func (mv *mainView) appendOutput(line string) {
 			mv.outputText += "\n" + formatted
 		}
 		mv.outputUpdating = true
-		mv.outputEntry.SetText(mv.outputText)
+		mv.refreshOutputEntryLocked()
 		mv.outputUpdating = false
 		mv.outputScroll.ScrollToBottom()
 	})
+}
+
+func (mv *mainView) refreshOutputEntryLocked() {
+	mv.outputEntry.SetText(mv.outputText)
+	rowCount := strings.Count(mv.outputText, "\n")
+	mv.outputEntry.CursorRow = rowCount
+
+	lastLine := mv.outputText
+	if idx := strings.LastIndex(mv.outputText, "\n"); idx >= 0 {
+		if idx+1 < len(mv.outputText) {
+			lastLine = mv.outputText[idx+1:]
+		} else {
+			lastLine = ""
+		}
+	}
+	mv.outputEntry.CursorColumn = utf8.RuneCountInString(lastLine)
+	mv.outputEntry.Refresh()
 }
 
 func (mv *mainView) failWithError(err error) {

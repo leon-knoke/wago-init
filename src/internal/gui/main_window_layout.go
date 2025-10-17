@@ -66,7 +66,7 @@ func (mv *mainView) setupOutputArea() {
 			return
 		}
 		mv.outputUpdating = true
-		mv.outputEntry.SetText(mv.outputText)
+		mv.refreshOutputEntryLocked()
 		mv.outputUpdating = false
 	}
 
