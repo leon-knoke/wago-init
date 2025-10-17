@@ -6,4 +6,4 @@ A lightweight Go + Fyne tool for provisioning WAGO CC100 edge devices. Automates
 /etc/config-tools/fwupdate activate [--keep-application]
 /etc/config-tools/fwupdate start --path /home/update
 /etc/config-tools/fwupdate finish
-/etc/config-tools/fwupdate clear
+/etc/config-tools/fwupdate log

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -14,21 +15,24 @@ var (
 	FirmwareCommand = "/etc/config-tools/get_coupler_details firmware-revision"
 )
 
-func CheckSSH(client *ssh.Client, logFn func(string), newestFirmware string) (bool, error) {
-	logFn("Connection to device established")
-
-	fwUpdateRequired := false
+func CheckSerialNumber(client *ssh.Client, logFn func(string)) error {
 
 	serialOut, err := runSSHCommand(client, SerialCommand, shortSessionTimeout)
 	if err != nil {
-		return fwUpdateRequired, err
+		return err
 	}
 
 	serial := parseSerial(serialOut)
 	if serial == "" {
-		return fwUpdateRequired, errors.New("serial output empty after parsing")
+		return errors.New("serial output empty after parsing")
 	}
 	logFn("Device serial number: " + serial)
+	return nil
+}
+
+func CheckFirmware(client *ssh.Client, logFn func(string), newestFirmware int) (bool, error) {
+
+	fwUpdateRequired := false
 
 	fwOut, err := runSSHCommand(client, FirmwareCommand, shortSessionTimeout)
 	if err != nil {
@@ -38,8 +42,8 @@ func CheckSSH(client *ssh.Client, logFn func(string), newestFirmware string) (bo
 	if fwFull == "" {
 		return fwUpdateRequired, errors.New("firmware output empty")
 	}
-	if fwBuild != "" {
-		logFn(fmt.Sprintf("Firmware revision: %s", fwBuild))
+	if fwBuild != 0 {
+		logFn(fmt.Sprintf("Firmware revision: %d", fwBuild))
 		if fwBuild < newestFirmware {
 			fwUpdateRequired = true
 		}
@@ -58,12 +62,17 @@ func parseSerial(raw string) string {
 	return raw
 }
 
-func parseFirmwareBuild(raw string) (full string, build string) {
+func parseFirmwareBuild(raw string) (full string, build int) {
 	fwBuildRegex := regexp.MustCompile(`\((\d+)\)`)
 	full = strings.TrimSpace(raw)
 	m := fwBuildRegex.FindStringSubmatch(full)
 	if len(m) == 2 {
-		build = m[1]
+		num, err := strconv.Atoi(strings.TrimSpace(m[1]))
+		if err == nil {
+			build = num
+		} else {
+			build = 0
+		}
 	}
 	return
 }

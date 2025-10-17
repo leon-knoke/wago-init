@@ -3,6 +3,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"wago-init/internal/aws"
@@ -18,12 +19,25 @@ func (mv *mainView) handleStart() {
 	mv.progress.SetValue(0)
 	mv.appendOutput("")
 
+	fwRevisionRaw := strings.TrimSpace(mv.configValues[fs.FirmwareRevision])
+	fwTarget := 0
+	if fwRevisionRaw != "" {
+		if num, err := strconv.Atoi(fwRevisionRaw); err == nil {
+			fwTarget = num
+		} else {
+			mv.appendOutput(fmt.Sprintf("Warning: firmware revision '%s' is not numeric; skipping automatic comparison", fwRevisionRaw))
+		}
+	}
+
 	params := install.Parameters{
 		Ip:                strings.TrimSpace(mv.ipEntry.Text),
+		FirmwareRevision:  fwRevisionRaw,
 		PromptPassword:    mv.passwordPrompt,
 		PromptNewPassword: mv.newPasswordPrompt,
 		ContainerImage:    mv.configValues[fs.ContainerImage],
 		ContainerFlags:    install.BuildContainerCommand(mv.configValues[fs.ContainerCommand]),
+		NewestFirmware:    fwTarget,
+		FirmwarePath:      strings.TrimSpace(mv.configValues[fs.FirmwarePath]),
 	}
 
 	go mv.runInstallation(params)

@@ -22,16 +22,8 @@ func ConfigureServices(client *ssh.Client, logFn func(string)) error {
 	}
 	logFn("Docker Service activated " + dockerOut)
 
-	// _, err = runSSHCommand(client, DockerRemoveContainers, longSessionTimeout)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// _, err = runSSHCommand(client, DockerRemoveImages, longSessionTimeout)
-	// if err != nil {
-	// 	return err
-	// }
-	// logFn("Removed existing Docker containers and images")
+	runSSHCommand(client, DockerRemoveContainers, longSessionTimeout)
+	runSSHCommand(client, DockerRemoveImages, longSessionTimeout)
 
 	return nil
 }

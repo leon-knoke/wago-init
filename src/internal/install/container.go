@@ -52,8 +52,6 @@ func BuildContainerCommand(flagsRaw string) string {
 	return strings.Join(parts, " ")
 }
 
-// SSH Command: echo "'"$TOKEN"'" | docker login --username AWS --password-stdin "'"$ECR_URL"'"
-
 func ecrLogin(client *ssh.Client, token, ecrUrl string) error {
 	loginCmd := fmt.Sprintf("echo %s | docker login --username AWS --password-stdin %s",
 		shellQuote(token), shellQuote(ecrUrl))

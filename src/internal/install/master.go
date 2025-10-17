@@ -21,18 +21,29 @@ func Install(installParameters Parameters, logFn func(string), progressFn func(f
 	progressFn(0.04)
 
 	ip := params.Ip
-	client, _, err := InitSshClient(ip, params.PromptPassword)
+	client, password, err := InitSshClient(ip, params.PromptPassword)
+	if err != nil {
+		return err
+	}
+	params.CurrentPassword = password
+	logFn("Connection to device established")
+
+	err = CheckSerialNumber(client, logFn)
 	if err != nil {
 		return err
 	}
 
-	fwUpdateRequired, err := CheckSSH(client, logFn, params.NewestFirmware)
+	fwUpdateRequired, err := CheckFirmware(client, logFn, params.NewestFirmware)
 	if err != nil {
 		return err
 	}
-	if fwUpdateRequired {
+	// if fwUpdateRequired {
+	if fwUpdateRequired || true {
 		logFn("Firmware update required. Starting update...")
-		err = UpdateFirmware(client, logFn, params, progressFn)
+		client, err = UpdateFirmware(client, logFn, &params)
+		if err != nil {
+			return err
+		}
 	}
 	progressFn(0.1)
 

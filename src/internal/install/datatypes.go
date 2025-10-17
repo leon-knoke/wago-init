@@ -4,7 +4,10 @@ const DefaultIp = "192.168.42.42"
 
 type Parameters struct {
 	Ip                string
-	NewestFirmware    string
+	FirmwareRevision  string
+	NewestFirmware    int
+	FirmwarePath      string
+	CurrentPassword   string
 	PromptPassword    func() (string, bool)
 	PromptNewPassword func() (string, bool)
 	AWSToken          string
