@@ -6,13 +6,13 @@ import (
 	"strings"
 )
 
-func Install(installParameters Parameters, logFn func(string), progressFn func(float64)) error {
-	progressFn(0)
+func Install(installParameters Parameters, logFn func(string, string), progressFn func(float64, float64)) error {
+
 	params, err := validateParameters(installParameters)
 	if err != nil {
 		return err
 	}
-	logFn("Starting process for IP: " + params.Ip)
+	logFn("Starting process for IP: "+params.Ip, "")
 
 	err = CheckMacAddress(params, logFn)
 	if err != nil {
@@ -25,55 +25,55 @@ func Install(installParameters Parameters, logFn func(string), progressFn func(f
 		return err
 	}
 	params.CurrentPassword = password
-	logFn("Connection to device established")
+	logFn("Connection to device established", "")
 
 	err = CheckSerialNumber(client, logFn)
 	if err != nil {
 		return err
 	}
 
-	progressFn(0.05)
-
-	fwUpdateRequired, err := CheckFirmware(client, logFn, params.NewestFirmware)
-	if err != nil {
-		return err
-	}
-	if fwUpdateRequired {
-		logFn("Firmware update required. Starting update...")
-		client, err = UpdateFirmware(client, logFn, &params, progressFn)
-		if err != nil {
-			return err
-		}
-	}
-	progressFn(0.6)
-
+	logFn("Asking for new user password", "")
 	newPassword, ok := params.PromptNewPassword()
 	if !ok {
 		return errors.New("new password prompt cancelled by user")
 	}
+	logFn("Received new password from user", "")
 
 	err = ChangeUserPasswords(client, logFn, newPassword)
 	if err != nil {
 		return err
 	}
-	progressFn(0.65)
+
+	progressFn(0.05, 0.2)
+
+	fwUpdateRequired, err := CheckFirmware(client, logFn, params.NewestFirmware)
+	if err != nil {
+		return err
+	}
+	if fwUpdateRequired || true {
+		logFn("Firmware update required. Starting update...", "")
+		client, err = UpdateFirmware(client, logFn, &params, progressFn)
+		if err != nil {
+			return err
+		}
+	}
+	progressFn(0.6, 0.64)
 
 	err = ConfigureServices(client, logFn)
 	if err != nil {
 		return err
 	}
-	progressFn(0.7)
+	progressFn(0.65, 0.99)
 
 	err = CreateContainer(client, logFn, params)
 	if err != nil {
 		return err
 	}
-	progressFn(0.95)
 
 	CopyPathToDevice(client, params.ConfigPath, "/root", logFn)
 
-	logFn("Installation complete.")
-	progressFn(1)
+	logFn("Installation complete.", "")
+	progressFn(1, 1)
 
 	client.Close()
 	return nil

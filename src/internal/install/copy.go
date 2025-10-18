@@ -18,14 +18,7 @@ const copyToDeviceTimeout = 20 * time.Minute
 // CopyPathToDevice replicates the contents of localPath onto remotePath using an existing SSH client.
 // localPath can point to either a single file or a directory. Directories are copied recursively.
 // Collected output is streamed through logFn so the user can monitor progress.
-func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn func(string)) error {
-	if client == nil {
-		return errors.New("ssh client is nil")
-	}
-	if logFn == nil {
-		logFn = func(string) {}
-	}
-
+func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn func(string, string)) error {
 	localPath = filepath.Clean(localPath)
 	remotePath = strings.TrimSpace(remotePath)
 	if remotePath == "" {
@@ -37,7 +30,7 @@ func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn fu
 		return fmt.Errorf("stat local path: %w", err)
 	}
 
-	logFn(fmt.Sprintf("Copying %s to %s", localPath, remotePath))
+	logFn(fmt.Sprintf("Copying %s to %s", localPath, remotePath), "")
 
 	if _, err := runSSHCommand(client, fmt.Sprintf("mkdir -p %s", shellQuote(remotePath)), shortSessionTimeout); err != nil {
 		return fmt.Errorf("ensure remote directory: %w", err)
@@ -92,7 +85,7 @@ func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn fu
 			sessionErr = err
 			sessionDone = true
 		case <-timer.C:
-			logFn("Copy operation timed out; attempting to abort remote extraction")
+			logFn("Copy operation timed out; attempting to abort remote extraction", "")
 			if !sessionDone {
 				sessionErr = fmt.Errorf("copy command timed out after %s", copyToDeviceTimeout)
 				_ = sess.Signal(ssh.SIGKILL)
@@ -108,11 +101,11 @@ func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn fu
 		return fmt.Errorf("remote extraction: %w", sessionErr)
 	}
 
-	logFn("Copy complete.")
+	logFn("Copy complete.", "")
 	return nil
 }
 
-func streamLocalPathToTar(w io.Writer, basePath string, info os.FileInfo, logFn func(string)) error {
+func streamLocalPathToTar(w io.Writer, basePath string, info os.FileInfo, logFn func(string, string)) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
@@ -136,7 +129,7 @@ func streamLocalPathToTar(w io.Writer, basePath string, info os.FileInfo, logFn 
 	return writeTarEntry(tw, basePath, filepath.Base(basePath), info, logFn)
 }
 
-func writeTarEntry(tw *tar.Writer, fullPath, rel string, info os.FileInfo, logFn func(string)) error {
+func writeTarEntry(tw *tar.Writer, fullPath, rel string, info os.FileInfo, logFn func(string, string)) error {
 	mode := info.Mode()
 	linkTarget := ""
 	if mode&os.ModeSymlink != 0 {
@@ -171,11 +164,11 @@ func writeTarEntry(tw *tar.Writer, fullPath, rel string, info os.FileInfo, logFn
 		if _, err := io.Copy(tw, file); err != nil {
 			return fmt.Errorf("copy '%s' contents: %w", fullPath, err)
 		}
-		logFn("Copied file: " + header.Name)
+		logFn("Copied file: "+header.Name, "")
 	} else if mode&os.ModeSymlink != 0 {
-		logFn("Copied symlink: " + header.Name)
+		logFn("Copied symlink: "+header.Name, "")
 	} else if info.IsDir() {
-		logFn("Created directory: " + header.Name)
+		logFn("Created directory: "+header.Name, "")
 	}
 
 	return nil

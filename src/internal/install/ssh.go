@@ -95,12 +95,9 @@ func runSSHCommand(client *ssh.Client, cmd string, timeout time.Duration) (strin
 	}
 }
 
-func runSSHCommandStreaming(client *ssh.Client, cmd string, timeout time.Duration, logFn func(string)) error {
+func runSSHCommandStreaming(client *ssh.Client, cmd string, timeout time.Duration, logFn func(string, string)) error {
 	if client == nil {
 		return fmt.Errorf("ssh client is nil")
-	}
-	if logFn == nil {
-		logFn = func(string) {}
 	}
 
 	sess, err := client.NewSession()
@@ -141,14 +138,14 @@ func runSSHCommandStreaming(client *ssh.Client, cmd string, timeout time.Duratio
 					collect.WriteString(line)
 				}
 				if prefix != "" {
-					logFn(prefix + line)
+					logFn(prefix+line, "")
 				} else {
-					logFn(line)
+					logFn(line, "")
 				}
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			logFn(fmt.Sprintf("stream error (%s): %v", streamName, err))
+			logFn(fmt.Sprintf("stream error (%s): %v", streamName, err), "")
 		}
 	}
 

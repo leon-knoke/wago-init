@@ -9,18 +9,18 @@ var (
 	DockerRemoveImages     = "docker rmi -f $(docker images -aq)"
 )
 
-func ConfigureServices(client *ssh.Client, logFn func(string)) error {
+func ConfigureServices(client *ssh.Client, logFn func(string, string)) error {
 	ntpOut, err := runSSHCommand(client, NtpCommand, shortSessionTimeout)
 	if err != nil {
 		return err
 	}
-	logFn("NTP set to pool.ntp.org " + ntpOut)
+	logFn("NTP set to pool.ntp.org "+ntpOut, "")
 
 	dockerOut, err := runSSHCommand(client, DockerCommand, longSessionTimeout)
 	if err != nil {
 		return err
 	}
-	logFn("Docker Service activated " + dockerOut)
+	logFn("Docker Service activated "+dockerOut, "")
 
 	runSSHCommand(client, DockerRemoveContainers, longSessionTimeout)
 	runSSHCommand(client, DockerRemoveImages, longSessionTimeout)

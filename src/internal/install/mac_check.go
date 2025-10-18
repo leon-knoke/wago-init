@@ -14,11 +14,11 @@ var allowedOUIs = []string{
 	"00:30:de",
 }
 
-func CheckMacAddress(installParameters Parameters, logFn func(string)) error {
+func CheckMacAddress(installParameters Parameters, logFn func(string, string)) error {
 	ip := installParameters.Ip
 
-	if err := pingOnce(ip, logFn); err != nil {
-		logFn("Ping attempt failed, device might be offline: " + err.Error())
+	if err := pingOnce(ip); err != nil {
+		logFn("Ping attempt failed, device might be offline: "+err.Error(), "")
 	}
 	mac, err := lookupMAC(ip)
 	if err != nil {
@@ -33,14 +33,14 @@ func CheckMacAddress(installParameters Parameters, logFn func(string)) error {
 	}
 	for _, allowed := range allowedOUIs {
 		if oui == allowed {
-			logFn("Device MAC address: " + mac)
+			logFn("Device MAC address: "+mac, "")
 			return nil
 		}
 	}
 	return errors.New("this device is not supported")
 }
 
-func pingOnce(ip string, logFn func(string)) error {
+func pingOnce(ip string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":

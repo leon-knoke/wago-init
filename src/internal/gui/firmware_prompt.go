@@ -22,7 +22,7 @@ func BuildFirmwarePrompt(configValues *fs.EnvConfig, w fyne.Window) *widget.Butt
 
 		revisionEntry := widget.NewEntry()
 		revisionEntry.SetText(values[fs.FirmwareRevision])
-		revisionEntry.SetPlaceHolder("e.g., 01.02.03")
+		revisionEntry.SetPlaceHolder("e.g., 28")
 
 		fileEntry := widget.NewEntry()
 		fileEntry.SetText(values[fs.FirmwarePath])

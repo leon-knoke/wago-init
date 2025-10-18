@@ -13,17 +13,17 @@ const (
 	containerCreateTimeout = 20 * time.Minute
 )
 
-func CreateContainer(client *ssh.Client, logFn func(string), params Parameters) error {
+func CreateContainer(client *ssh.Client, logFn func(string, string), params Parameters) error {
 
 	ecrLogin(client, params.AWSToken, params.AWSEcrUrl)
 
 	createCmd := buildDockerCreateCommand(params.ContainerFlags, params.ContainerImage)
-	logFn("Creating container with image: " + params.ContainerImage)
+	logFn("Creating container with image: "+params.ContainerImage, "")
 	if err := runSSHCommandStreaming(client, createCmd, containerCreateTimeout, logFn); err != nil {
 		return fmt.Errorf("docker create failed: %w", err)
 	}
 
-	logFn("Container created successfully.")
+	logFn("Container created successfully.", "")
 	return nil
 }
 

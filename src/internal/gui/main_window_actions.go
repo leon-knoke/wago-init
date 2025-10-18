@@ -14,11 +14,13 @@ import (
 	"fyne.io/fyne/v2/dialog"
 )
 
+const progressDelayInterval = 12090 * time.Millisecond
+
 func (mv *mainView) handleStart() {
 	mv.startBtn.Disable()
 	mv.ipEntry.Disable()
 	mv.progress.SetValue(0)
-	mv.appendOutput("")
+	mv.appendOutput("", "")
 
 	fwRevisionRaw := strings.TrimSpace(mv.configValues[fs.FirmwareRevision])
 	fwTarget := 0
@@ -26,7 +28,7 @@ func (mv *mainView) handleStart() {
 		if num, err := strconv.Atoi(fwRevisionRaw); err == nil {
 			fwTarget = num
 		} else {
-			mv.appendOutput(fmt.Sprintf("Warning: firmware revision '%s' is not numeric; skipping automatic comparison", fwRevisionRaw))
+			mv.appendOutput(fmt.Sprintf("Warning: firmware revision '%s' is not numeric; skipping automatic comparison", fwRevisionRaw), "")
 		}
 	}
 
@@ -76,7 +78,7 @@ func (mv *mainView) runInstallation(params install.Parameters) {
 	}
 	ecrUrl := aws.GetEcrUrl(awsAccountID, awsRegion)
 
-	mv.appendOutput("Authorization with AWS successful")
+	mv.appendOutput("Authorization with AWS successful", "")
 	params.AWSToken = token
 	params.AWSEcrUrl = ecrUrl
 	params.ConfigPath = strings.TrimSpace(mv.configValues[fs.ConfigPath])
@@ -90,13 +92,37 @@ func (mv *mainView) runInstallation(params install.Parameters) {
 	mv.finishInstallation(err)
 }
 
-func (mv *mainView) updateProgress(value float64) {
+func (mv *mainView) updateProgress(value float64, targetValue float64) {
 	mv.runOnUI(func() {
 		mv.progress.SetValue(value)
 	})
+	if value >= targetValue {
+		return
+	}
+	go func(startValue float64, target float64) {
+		current := startValue
+		for {
+			time.Sleep(progressDelayInterval)
+			mv.runOnUI(func() {
+				actual := mv.progress.Value
+				if actual != current {
+					return
+				}
+				if current >= target {
+					mv.progress.SetValue(target)
+					return
+				}
+				current += 0.01
+				if current > target {
+					current = target
+				}
+				mv.progress.SetValue(current)
+			})
+		}
+	}(value, targetValue)
 }
 
-func (mv *mainView) appendOutput(line string) {
+func (mv *mainView) appendOutput(line string, replaceIdentifier string) {
 	formatted := ""
 	if line != formatted {
 		formatted = fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), line)
@@ -147,7 +173,7 @@ func (mv *mainView) finishInstallation(err error) {
 			mv.startBtn.Enable()
 			mv.ipEntry.Enable()
 		})
-		mv.appendOutput("Error: " + err.Error())
+		mv.appendOutput("Error: "+err.Error(), "")
 		return
 	}
 
@@ -156,7 +182,7 @@ func (mv *mainView) finishInstallation(err error) {
 		mv.startBtn.Enable()
 		mv.ipEntry.Enable()
 	})
-	mv.appendOutput("Done.")
+	mv.appendOutput("Done.", "")
 }
 
 func cloneEnvConfig(src fs.EnvConfig) fs.EnvConfig {

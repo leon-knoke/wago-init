@@ -68,12 +68,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p ../build
-          go build -o "../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/wago-init
+          go build -ldflags -H=windowsgui -o "../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/wago-init
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wago-init-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: wago-init-${{ matrix.fyne_target }}-${{ matrix.goarch }}
           path: build/
 
   release:

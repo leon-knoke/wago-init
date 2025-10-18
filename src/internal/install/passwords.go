@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func ChangeUserPasswords(client *ssh.Client, logFn func(string), newPassword string) error {
+func ChangeUserPasswords(client *ssh.Client, logFn func(string, string), newPassword string) error {
 
 	hash, err := hashPasswordSHA512(newPassword)
 	if err != nil {
@@ -21,7 +21,7 @@ func ChangeUserPasswords(client *ssh.Client, logFn func(string), newPassword str
 		}
 	}
 
-	logFn("Successfully changed user passwords")
+	logFn("Successfully changed user passwords", "")
 	return nil
 }
 
