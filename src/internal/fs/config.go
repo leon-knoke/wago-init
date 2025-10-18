@@ -11,7 +11,7 @@ import (
 type EnvConfig map[string]string
 
 const (
-	configDirName  = ".prodaso"
+	configDirName  = ".wago-init"
 	configFileName = "wago-init.env"
 )
 
