@@ -21,6 +21,7 @@ func (mv *mainView) handleStart() {
 	mv.ipEntry.Disable()
 	mv.progress.SetValue(0)
 	mv.appendOutput("", "")
+	mv.showProgressMode()
 
 	fwRevisionRaw := strings.TrimSpace(mv.configValues[fs.FirmwareRevision])
 	fwTarget := 0
@@ -41,6 +42,7 @@ func (mv *mainView) handleStart() {
 		ContainerFlags:    install.BuildContainerCommand(mv.configValues[fs.ContainerCommand]),
 		NewestFirmware:    fwTarget,
 		FirmwarePath:      strings.TrimSpace(mv.configValues[fs.FirmwarePath]),
+		ForceFirmware:     strings.TrimSpace(mv.configValues[fs.ForceFirmwareUpdate]) == "true",
 	}
 
 	go mv.runInstallation(params)
@@ -174,6 +176,7 @@ func (mv *mainView) refreshOutputEntryLocked() {
 }
 
 func (mv *mainView) failWithError(err error) {
+	mv.showIdleMode()
 	mv.runOnUI(func() {
 		dialog.ShowError(err, mv.window)
 		mv.progress.SetValue(0)
@@ -184,15 +187,18 @@ func (mv *mainView) failWithError(err error) {
 
 func (mv *mainView) finishInstallation(err error) {
 	if err != nil {
+		mv.showIdleMode()
 		mv.runOnUI(func() {
 			mv.progress.SetValue(0)
 			mv.startBtn.Enable()
 			mv.ipEntry.Enable()
 		})
 		mv.appendOutput("Error: "+err.Error(), "")
+		mv.appendOutput(fmt.Sprintf("Process was aborted at %.0f%% completion", mv.progress.Value*100), "")
 		return
 	}
 
+	mv.showIdleMode()
 	mv.runOnUI(func() {
 		mv.progress.SetValue(1)
 		mv.startBtn.Enable()
@@ -209,4 +215,18 @@ func cloneEnvConfig(src fs.EnvConfig) fs.EnvConfig {
 		dst[key] = value
 	}
 	return dst
+}
+
+func (mv *mainView) showProgressMode() {
+	mv.runOnUI(func() {
+		mv.startBtn.Hide()
+		mv.progress.Show()
+	})
+}
+
+func (mv *mainView) showIdleMode() {
+	mv.runOnUI(func() {
+		mv.progress.Hide()
+		mv.startBtn.Show()
+	})
 }

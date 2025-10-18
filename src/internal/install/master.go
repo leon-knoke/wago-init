@@ -50,8 +50,8 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 	if err != nil {
 		return err
 	}
-	if fwUpdateRequired || true {
-		logFn("Firmware update required. Starting update...", "")
+	if fwUpdateRequired || params.ForceFirmware {
+		logFn("Pending firmware update. Starting...", "")
 		client, err = UpdateFirmware(client, logFn, &params, progressFn)
 		if err != nil {
 			return err

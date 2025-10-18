@@ -7,6 +7,7 @@ type Parameters struct {
 	FirmwareRevision  string
 	NewestFirmware    int
 	FirmwarePath      string
+	ForceFirmware     bool
 	CurrentPassword   string
 	PromptPassword    func() (string, bool)
 	PromptNewPassword func() (string, bool)

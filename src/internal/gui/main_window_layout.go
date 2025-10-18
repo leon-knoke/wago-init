@@ -23,11 +23,16 @@ func (mv *mainView) buildContent() {
 	ipRow := mv.buildIPRow()
 	configRow := mv.buildConfigRow()
 
+	buttonSize := mv.startBtn.MinSize()
+	buttonWrapper := container.NewGridWrap(fyne.NewSize(120, buttonSize.Height), mv.startBtn)
+	progressWrapper := container.NewMax(mv.progress)
+	startStack := container.NewStack(progressWrapper, buttonWrapper)
+	mv.progress.Hide()
+
 	top := container.NewVBox(
 		ipRow,
 		configRow,
-		mv.startBtn,
-		mv.progress,
+		startStack,
 	)
 
 	content := container.NewBorder(top, nil, nil, nil, mv.outputScroll)
@@ -48,9 +53,7 @@ func (mv *mainView) setupButtons() {
 	mv.awsSettingsBtn = BuildAWSPromt(&mv.configValues, mv.window)
 	mv.containerSettingsBtn = BuildContainerPrompt(&mv.configValues, mv.window)
 	mv.firmwareSettingsBtn = BuildFirmwarePrompt(&mv.configValues, mv.window)
-	mv.deviceDiscoveryBtn = widget.NewButton("Device discovery", func() {
-		dialog.ShowInformation("Device discovery", "Coming soon.", mv.window)
-	})
+	mv.deviceDiscoveryBtn = BuildDeviceDiscoveryPrompt(mv)
 }
 
 func (mv *mainView) setupOutputArea() {

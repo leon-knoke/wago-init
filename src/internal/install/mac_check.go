@@ -20,24 +20,45 @@ func CheckMacAddress(installParameters Parameters, logFn func(string, string)) e
 	if err := pingOnce(ip); err != nil {
 		logFn("Ping attempt failed, device might be offline: "+err.Error(), "")
 	}
-	mac, err := lookupMAC(ip)
+
+	mac, allowed, err := DiscoverDeviceMAC(ip)
 	if err != nil {
 		return fmt.Errorf("failed to resolve MAC for %s: %w", ip, err)
 	}
-
-	// mac returned by lookupMAC is normalized (xx:xx:xx:...)
-	parts := strings.Split(mac, ":")
-	oui := mac
-	if len(parts) >= 3 {
-		oui = strings.ToLower(strings.Join(parts[:3], ":"))
+	if !allowed {
+		return errors.New("this device is not supported")
 	}
+
+	logFn("Device MAC address: "+mac, "")
+	return nil
+}
+
+func DiscoverDeviceMAC(ip string) (string, bool, error) {
+	pingErr := pingOnce(ip)
+
+	mac, err := lookupMAC(ip)
+	if err != nil {
+		if pingErr != nil {
+			return "", false, fmt.Errorf("ping failed: %w; lookup failed: %v", pingErr, err)
+		}
+		return "", false, err
+	}
+
+	return mac, isAllowedOUI(mac), nil
+}
+
+func isAllowedOUI(mac string) bool {
+	parts := strings.Split(mac, ":")
+	if len(parts) < 3 {
+		return false
+	}
+	oui := strings.ToLower(strings.Join(parts[:3], ":"))
 	for _, allowed := range allowedOUIs {
 		if oui == allowed {
-			logFn("Device MAC address: "+mac, "")
-			return nil
+			return true
 		}
 	}
-	return errors.New("this device is not supported")
+	return false
 }
 
 func pingOnce(ip string) error {

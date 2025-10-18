@@ -3,6 +3,7 @@ package gui
 import (
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"wago-init/internal/fs"
 
@@ -23,6 +24,12 @@ func BuildFirmwarePrompt(configValues *fs.EnvConfig, w fyne.Window) *widget.Butt
 		revisionEntry := widget.NewEntry()
 		revisionEntry.SetText(values[fs.FirmwareRevision])
 		revisionEntry.SetPlaceHolder("e.g., 28")
+		revisionEntryContainer := container.NewGridWrap(fyne.NewSize(65, revisionEntry.MinSize().Height), revisionEntry)
+
+		forceFirmwareCheck := widget.NewCheck("Force Firmware Update", nil)
+		forceFirmwareCheck.SetChecked(values[fs.ForceFirmwareUpdate] == "true")
+
+		println("Check: ", values[fs.ForceFirmwareUpdate])
 
 		fileEntry := widget.NewEntry()
 		fileEntry.SetText(values[fs.FirmwarePath])
@@ -67,13 +74,14 @@ func BuildFirmwarePrompt(configValues *fs.EnvConfig, w fyne.Window) *widget.Butt
 			fileDialog.Show()
 		}
 
-		fileRow := container.NewBorder(nil, nil, nil, browseBtn, fileEntry)
-
 		content := container.NewVBox(
-			widget.NewForm(widget.NewFormItem("Firmware Revision", revisionEntry)),
+			container.NewHBox(widget.NewForm(widget.NewFormItem("Firmware Revision", revisionEntryContainer)), forceFirmwareCheck),
 			widget.NewLabel("Firmware Update File"),
-			fileRow,
+			fileEntry,
+			container.NewBorder(browseBtn, nil, nil, nil, nil),
 		)
+
+		revisionEntry.Resize(fyne.NewSize(320, revisionEntry.MinSize().Height))
 
 		dialogWindow := dialog.NewCustomConfirm(
 			"Firmware Settings",
@@ -92,6 +100,7 @@ func BuildFirmwarePrompt(configValues *fs.EnvConfig, w fyne.Window) *widget.Butt
 
 				updated[fs.FirmwareRevision] = strings.TrimSpace(revisionEntry.Text)
 				updated[fs.FirmwarePath] = strings.TrimSpace(fileEntry.Text)
+				updated[fs.ForceFirmwareUpdate] = strings.TrimSpace(strconv.FormatBool(forceFirmwareCheck.Checked))
 
 				if err := fs.SaveConfig(updated); err != nil {
 					dialog.ShowError(err, w)
