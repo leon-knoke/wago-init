@@ -88,13 +88,13 @@ func UpdateFirmware(client *ssh.Client, logFn func(string, string), params *Para
 		return client, fmt.Errorf("fwupdate start: %w", startErr)
 	}
 	logFn("Firmware update initiated, monitoring device status...", "")
-	if err := monitorFirmwareProgress(client, logFn, progressFn); err != nil {
+	if err := monitorFirmwareProgress(client, logFn); err != nil {
 		return client, err
 	}
 
 	logFn("Device connection lost, waiting for reboot to complete...", "")
 
-	progressFn(0.31, 0.41)
+	progressFn(0.31, 0.58)
 
 	_ = client.Close()
 
@@ -130,10 +130,6 @@ func UpdateFirmware(client *ssh.Client, logFn func(string, string), params *Para
 }
 
 func validateFirmwareFile(localPath string) error {
-	if strings.ToLower(filepath.Ext(localPath)) != ".wup" {
-		return fmt.Errorf("firmware file must have .wup extension: %s", localPath)
-	}
-
 	info, err := os.Stat(localPath)
 	if err != nil {
 		return fmt.Errorf("stat firmware file: %w", err)
@@ -168,9 +164,7 @@ func monitorFirmwareInitialization(client *ssh.Client) error {
 	}
 }
 
-func monitorFirmwareProgress(client *ssh.Client, logFn func(string, string), progressFn func(float64, float64)) error {
-	var lastStatusLine string
-
+func monitorFirmwareProgress(client *ssh.Client, logFn func(string, string)) error {
 	for {
 		output, err := runSSHCommand(client, firmwareStatusCommand, longSessionTimeout)
 		if err != nil {
@@ -179,21 +173,12 @@ func monitorFirmwareProgress(client *ssh.Client, logFn func(string, string), pro
 		}
 
 		lines := strings.Split(strings.TrimSpace(output), "\n")
-		for _, line := range lines {
-			trimmed := strings.TrimSpace(line)
-			if trimmed == "" {
-				continue
-			}
 
-			lower := strings.ToLower(trimmed)
-			if trimmed != lastStatusLine {
-				logFn(trimmed, "")
-				lastStatusLine = trimmed
-			}
+		result := fmt.Sprintf("Update status: %s, %s, %s, %s", lines[2], lines[3], lines[4], lines[5])
+		logFn(result, "Update status: ")
 
-			if strings.Contains(lower, "status=error") {
-				return fmt.Errorf("firmware update reported error: %s", trimmed)
-			}
+		if strings.Contains(output, "status=error") {
+			return fmt.Errorf("firmware update reported error: %s", lines[5])
 		}
 
 		time.Sleep(firmwareLogPollIntervalShort)

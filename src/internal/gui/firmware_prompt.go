@@ -105,7 +105,7 @@ func BuildFirmwarePrompt(configValues *fs.EnvConfig, w fyne.Window) *widget.Butt
 			w,
 		)
 
-		dialogWindow.Resize(fyne.NewSize(500, 260))
+		dialogWindow.Resize(fyne.NewSize(800, 260))
 		dialogWindow.Show()
 	})
 

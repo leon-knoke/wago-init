@@ -13,18 +13,26 @@ const (
 	containerCreateTimeout = 20 * time.Minute
 )
 
+var privateLogFn func(string, string)
+
 func CreateContainer(client *ssh.Client, logFn func(string, string), params Parameters) error {
+
+	privateLogFn = logFn
 
 	ecrLogin(client, params.AWSToken, params.AWSEcrUrl)
 
 	createCmd := buildDockerCreateCommand(params.ContainerFlags, params.ContainerImage)
 	logFn("Creating container with image: "+params.ContainerImage, "")
-	if err := runSSHCommandStreaming(client, createCmd, containerCreateTimeout, logFn); err != nil {
+	if err := runSSHCommandStreaming(client, createCmd, containerCreateTimeout, handleContainerPullLogging); err != nil {
 		return fmt.Errorf("docker create failed: %w", err)
 	}
 
 	logFn("Container created successfully.", "")
 	return nil
+}
+
+func handleContainerPullLogging(line string, _ string) {
+	privateLogFn(line, line[:12])
 }
 
 func BuildContainerCommand(flagsRaw string) string {

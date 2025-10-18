@@ -128,10 +128,26 @@ func (mv *mainView) appendOutput(line string, replaceIdentifier string) {
 		formatted = fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), line)
 	}
 	mv.runOnUI(func() {
-		if mv.outputText == "" {
-			mv.outputText = formatted
+		if replaceIdentifier != "" && mv.outputText != "" {
+			lines := strings.Split(mv.outputText, "\n")
+			replaced := false
+			for i, l := range lines {
+				if strings.Contains(l, replaceIdentifier) {
+					lines[i] = formatted
+					replaced = true
+				}
+			}
+			if replaced {
+				mv.outputText = strings.Join(lines, "\n")
+			} else {
+				mv.outputText += "\n" + formatted
+			}
 		} else {
-			mv.outputText += "\n" + formatted
+			if mv.outputText == "" {
+				mv.outputText = formatted
+			} else {
+				mv.outputText += "\n" + formatted
+			}
 		}
 		mv.outputUpdating = true
 		mv.refreshOutputEntryLocked()
@@ -182,7 +198,6 @@ func (mv *mainView) finishInstallation(err error) {
 		mv.startBtn.Enable()
 		mv.ipEntry.Enable()
 	})
-	mv.appendOutput("Done.", "")
 }
 
 func cloneEnvConfig(src fs.EnvConfig) fs.EnvConfig {
