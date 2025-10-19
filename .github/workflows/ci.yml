@@ -24,16 +24,19 @@ jobs:
             goarch: amd64
             fyne_target: linux
             ext: ""
+            ldflags: ""
           - os: windows-latest
             goos: windows
             goarch: amd64
             fyne_target: windows
             ext: ".exe"
+            ldflags: "-H=windowsgui"
           - os: macos-latest
             goos: darwin
             goarch: arm64
             fyne_target: darwin
-            ext: ""
+            ext: ".zip"
+            ldflags: ""
 
     steps:
       - name: Checkout code
@@ -59,16 +62,28 @@ jobs:
         run: go mod tidy
 
       - name: Package app
+        if: matrix.os == 'macos-latest'
         working-directory: ./src/cmd/wago-init
         shell: bash
         run: fyne package --target ${{ matrix.fyne_target }}
 
       - name: Build binary
+        if: matrix.os != 'macos-latest'
         working-directory: ./src
         shell: bash
         run: |
           mkdir -p ../build
-          go build -ldflags -H=windowsgui -o "../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/wago-init
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+          go build -ldflags "${{ matrix.ldflags }}" \
+            -o "../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/wago-init
+
+      - name: Archive macOS bundle
+        if: matrix.os == 'macos-latest'
+        working-directory: ./src/cmd/wago-init
+        shell: bash
+        run: |
+          mkdir -p ../../build
+          zip -r "../../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" "wago-init.app"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
