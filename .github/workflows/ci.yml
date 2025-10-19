@@ -83,7 +83,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p ../../../build
-          zip -r "../../../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" "wago-init.app"
+          ditto -c -k --keepParent "wago-init.app" "../../../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
