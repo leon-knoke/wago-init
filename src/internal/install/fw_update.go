@@ -189,8 +189,7 @@ func monitorFirmwareFinalization(client *ssh.Client, logFn func(string, string))
 	const maxTransientErrors = 6
 
 	var (
-		errorCount     int
-		lastStatusLine string
+		errorCount int
 	)
 
 	for {
@@ -216,10 +215,6 @@ func monitorFirmwareFinalization(client *ssh.Client, logFn func(string, string))
 			}
 
 			lower := strings.ToLower(trimmed)
-			if trimmed != lastStatusLine {
-				logFn("Firmware status: "+trimmed, "")
-				lastStatusLine = trimmed
-			}
 
 			if strings.Contains(lower, "status=error") {
 				return fmt.Errorf("firmware update finalization reported error: %s", trimmed)
