@@ -17,25 +17,19 @@ import (
 func (mv *mainView) buildContent() {
 	mv.setupEntries()
 	mv.setupButtons()
-	mv.setupOutputArea()
+	mv.setupSessionsArea()
 	mv.setupStartButton()
 
 	ipRow := mv.buildIPRow()
 	configRow := mv.buildConfigRow()
 
-	buttonSize := mv.startBtn.MinSize()
-	buttonWrapper := container.NewGridWrap(fyne.NewSize(120, buttonSize.Height), mv.startBtn)
-	progressWrapper := container.NewMax(mv.progress)
-	startStack := container.NewStack(progressWrapper, buttonWrapper)
-	mv.progress.Hide()
-
 	top := container.NewVBox(
 		ipRow,
 		configRow,
-		startStack,
+		container.NewHBox(mv.startBtn),
 	)
 
-	content := container.NewBorder(top, nil, nil, nil, mv.outputScroll)
+	content := container.NewBorder(top, nil, nil, nil, mv.sessionsScroll)
 	mv.window.SetContent(content)
 }
 
@@ -56,25 +50,10 @@ func (mv *mainView) setupButtons() {
 	mv.deviceDiscoveryBtn = BuildDeviceDiscoveryPrompt(mv)
 }
 
-func (mv *mainView) setupOutputArea() {
-	mv.progress = widget.NewProgressBar()
-	mv.progress.SetValue(0)
-
-	mv.outputEntry = widget.NewMultiLineEntry()
-	mv.outputEntry.SetMinRowsVisible(14)
-	mv.outputEntry.Wrapping = fyne.TextWrapWord
-	mv.outputEntry.TextStyle = fyne.TextStyle{Monospace: true}
-	mv.outputEntry.OnChanged = func(s string) {
-		if mv.outputUpdating {
-			return
-		}
-		mv.outputUpdating = true
-		mv.refreshOutputEntryLocked()
-		mv.outputUpdating = false
-	}
-
-	mv.outputScroll = container.NewVScroll(mv.outputEntry)
-	mv.outputScroll.SetMinSize(fyne.NewSize(400, 300))
+func (mv *mainView) setupSessionsArea() {
+	mv.sessionsBox = container.NewVBox()
+	mv.sessionsScroll = container.NewVScroll(mv.sessionsBox)
+	mv.sessionsScroll.SetMinSize(fyne.NewSize(400, 300))
 }
 
 func (mv *mainView) setupStartButton() {

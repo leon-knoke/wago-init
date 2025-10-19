@@ -48,7 +48,7 @@ func UpdateFirmware(client *ssh.Client, logFn func(string, string), params *Para
 	}
 
 	logFn("Uploading firmware package to device", "")
-	if err := CopyPathToDevice(client, localPath, firmwareRemoteDir, logFn); err != nil {
+	if err := CopyPathToDevice(client, params.Context, localPath, firmwareRemoteDir, logFn); err != nil {
 		return client, fmt.Errorf("upload firmware: %w", err)
 	}
 

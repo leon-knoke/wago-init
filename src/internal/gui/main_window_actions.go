@@ -2,11 +2,12 @@ package gui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
-	"unicode/utf8"
+	"sync"
+
 	"wago-init/internal/aws"
 	"wago-init/internal/fs"
 	"wago-init/internal/install"
@@ -14,27 +15,46 @@ import (
 	"fyne.io/fyne/v2/dialog"
 )
 
-const progressDelayInterval = 12090 * time.Millisecond
-
 func (mv *mainView) handleStart() {
-	mv.startBtn.Disable()
-	mv.ipEntry.Disable()
-	mv.progress.SetValue(0)
-	mv.appendOutput("", "")
-	mv.showProgressMode()
+	var once sync.Once
+	unlockStart := func() {
+		once.Do(func() {
+			mv.runOnUI(func() {
+				if mv.startBtn != nil {
+					mv.startBtn.Enable()
+				}
+			})
+		})
+	}
+
+	if mv.startBtn != nil {
+		mv.startBtn.Disable()
+	}
 
 	fwRevisionRaw := strings.TrimSpace(mv.configValues[fs.FirmwareRevision])
 	fwTarget := 0
+	var fwWarning string
 	if fwRevisionRaw != "" {
 		if num, err := strconv.Atoi(fwRevisionRaw); err == nil {
 			fwTarget = num
 		} else {
-			mv.appendOutput(fmt.Sprintf("Warning: firmware revision '%s' is not numeric; skipping automatic comparison", fwRevisionRaw), "")
+			fwWarning = fmt.Sprintf("Warning: firmware revision '%s' is not numeric; skipping automatic comparison", fwRevisionRaw)
 		}
 	}
 
+	ip := strings.TrimSpace(mv.ipEntry.Text)
+	if ip == "" {
+		ip = install.DefaultIp
+	}
+
+	if mv.hasActiveSessionForIP(ip) {
+		unlockStart()
+		dialog.ShowError(fmt.Errorf("an installation for %s already exists. Remove it before starting another.", ip), mv.window)
+		return
+	}
+
 	params := install.Parameters{
-		Ip:                strings.TrimSpace(mv.ipEntry.Text),
+		Ip:                ip,
 		FirmwareRevision:  fwRevisionRaw,
 		PromptPassword:    mv.passwordPrompt,
 		PromptNewPassword: mv.newPasswordPrompt,
@@ -45,16 +65,48 @@ func (mv *mainView) handleStart() {
 		ForceFirmware:     strings.TrimSpace(mv.configValues[fs.ForceFirmwareUpdate]) == "true",
 	}
 
-	go mv.runInstallation(params)
-}
-
-func (mv *mainView) runInstallation(params install.Parameters) {
 	updated := cloneEnvConfig(mv.configValues)
 	updated[fs.ConfigPath] = strings.TrimSpace(mv.configPathEntry.Text)
-	updated[fs.IpAddress] = strings.TrimSpace(mv.ipEntry.Text)
+	updated[fs.IpAddress] = ip
 
+	awsRegion := strings.TrimSpace(updated[fs.AWSRegion])
+	awsAccountID := strings.TrimSpace(updated[fs.AWSAccountID])
+	awsAccessID := strings.TrimSpace(updated[fs.AWSAccessID])
+	awsAccessKey := strings.TrimSpace(updated[fs.AWSAccessKey])
+
+	if awsRegion == "" || awsAccessID == "" || awsAccessKey == "" || awsAccountID == "" {
+		unlockStart()
+		dialog.ShowError(fmt.Errorf("please provide AWS region, account id, access id, and access key before starting"), mv.window)
+		return
+	}
+
+	session := mv.newInstallSession(ip)
+	session.setStartUnlocker(unlockStart)
+
+	originalPasswordPrompt := params.PromptNewPassword
+	params.PromptNewPassword = func() (string, bool) {
+		value, ok := originalPasswordPrompt()
+		if ok {
+			session.unlockStart()
+		}
+		return value, ok
+	}
+
+	session.appendLog(fmt.Sprintf("Installation started for %s", ip), "")
+	if fwWarning != "" {
+		session.appendLog(fwWarning, "")
+	}
+	session.appendLog("Preparing installation...", "")
+
+	params.Context = session.ctx
+	params.ConfigPath = updated[fs.ConfigPath]
+
+	go mv.runInstallationSession(session, params, updated, awsRegion, awsAccountID, awsAccessID, awsAccessKey)
+}
+
+func (mv *mainView) runInstallationSession(session *installSession, params install.Parameters, updated fs.EnvConfig, awsRegion, awsAccountID, awsAccessID, awsAccessKey string) {
 	if err := fs.SaveConfig(updated); err != nil {
-		mv.failWithError(err)
+		session.reportFailure(err)
 		return
 	}
 
@@ -63,147 +115,51 @@ func (mv *mainView) runInstallation(params install.Parameters) {
 		mv.configPathEntry.SetText(updated[fs.ConfigPath])
 	})
 
-	awsRegion := strings.TrimSpace(updated[fs.AWSRegion])
-	awsAccountID := strings.TrimSpace(updated[fs.AWSAccountID])
-	awsAccessID := strings.TrimSpace(updated[fs.AWSAccessID])
-	awsAccessKey := strings.TrimSpace(updated[fs.AWSAccessKey])
+	session.appendLog("Configuration saved", "")
 
-	if awsRegion == "" || awsAccessID == "" || awsAccessKey == "" || awsAccountID == "" {
-		mv.failWithError(fmt.Errorf("please provide AWS region, account id, access id, and access key before starting"))
-		return
-	}
-
-	token, err := aws.FetchLoginPassword(context.Background(), awsRegion, awsAccessID, awsAccessKey)
+	token, err := aws.FetchLoginPassword(session.ctx, awsRegion, awsAccessID, awsAccessKey)
 	if err != nil {
-		mv.failWithError(err)
+		if errors.Is(err, context.Canceled) {
+			session.reportCancellation()
+			return
+		}
+		session.reportFailure(err)
 		return
 	}
-	ecrUrl := aws.GetEcrUrl(awsAccountID, awsRegion)
 
-	mv.appendOutput("Authorization with AWS successful", "")
 	params.AWSToken = token
-	params.AWSEcrUrl = ecrUrl
-	params.ConfigPath = strings.TrimSpace(mv.configValues[fs.ConfigPath])
+	params.AWSEcrUrl = aws.GetEcrUrl(awsAccountID, awsRegion)
+
+	session.appendLog("Authorization with AWS successful", "")
+
+	if session.ctx.Err() != nil {
+		session.reportCancellation()
+		return
+	}
 
 	err = install.Install(
 		params,
-		mv.appendOutput,
-		mv.updateProgress,
+		session.appendLog,
+		session.updateProgress,
 	)
 
-	mv.finishInstallation(err)
-}
-
-func (mv *mainView) updateProgress(value float64, targetValue float64) {
-	mv.runOnUI(func() {
-		mv.progress.SetValue(value)
-	})
-	if value >= targetValue {
-		return
+	switch {
+	case err == nil:
+		session.reportSuccess()
+	case errors.Is(err, context.Canceled):
+		session.reportCancellation()
+	default:
+		session.reportFailure(err)
 	}
-	go func(startValue float64, target float64) {
-		current := startValue
-		for {
-			time.Sleep(progressDelayInterval)
-			mv.runOnUI(func() {
-				actual := mv.progress.Value
-				if actual != current {
-					return
-				}
-				if current >= target {
-					mv.progress.SetValue(target)
-					return
-				}
-				current += 0.01
-				if current > target {
-					current = target
-				}
-				mv.progress.SetValue(current)
-			})
-		}
-	}(value, targetValue)
 }
 
-func (mv *mainView) appendOutput(line string, replaceIdentifier string) {
-	formatted := ""
-	if line != formatted {
-		formatted = fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), line)
-	}
-	mv.runOnUI(func() {
-		if replaceIdentifier != "" && mv.outputText != "" {
-			lines := strings.Split(mv.outputText, "\n")
-			replaced := false
-			for i, l := range lines {
-				if strings.Contains(l, replaceIdentifier) {
-					lines[i] = formatted
-					replaced = true
-				}
-			}
-			if replaced {
-				mv.outputText = strings.Join(lines, "\n")
-			} else {
-				mv.outputText += "\n" + formatted
-			}
-		} else {
-			if mv.outputText == "" {
-				mv.outputText = formatted
-			} else {
-				mv.outputText += "\n" + formatted
-			}
-		}
-		mv.outputUpdating = true
-		mv.refreshOutputEntryLocked()
-		mv.outputUpdating = false
-		mv.outputScroll.ScrollToBottom()
-	})
-}
-
-func (mv *mainView) refreshOutputEntryLocked() {
-	mv.outputEntry.SetText(mv.outputText)
-	rowCount := strings.Count(mv.outputText, "\n")
-	mv.outputEntry.CursorRow = rowCount
-
-	lastLine := mv.outputText
-	if idx := strings.LastIndex(mv.outputText, "\n"); idx >= 0 {
-		if idx+1 < len(mv.outputText) {
-			lastLine = mv.outputText[idx+1:]
-		} else {
-			lastLine = ""
+func (mv *mainView) hasActiveSessionForIP(ip string) bool {
+	for _, session := range mv.sessions {
+		if session.ip == ip {
+			return true
 		}
 	}
-	mv.outputEntry.CursorColumn = utf8.RuneCountInString(lastLine)
-	mv.outputEntry.Refresh()
-}
-
-func (mv *mainView) failWithError(err error) {
-	mv.showIdleMode()
-	mv.runOnUI(func() {
-		dialog.ShowError(err, mv.window)
-		mv.progress.SetValue(0)
-		mv.startBtn.Enable()
-		mv.ipEntry.Enable()
-	})
-}
-
-func (mv *mainView) finishInstallation(err error) {
-	if err != nil {
-		mv.showIdleMode()
-		mv.runOnUI(func() {
-			mv.progress.SetValue(0)
-			mv.startBtn.Enable()
-			mv.ipEntry.Enable()
-		})
-		mv.appendOutput("Error: "+err.Error(), "")
-		mv.appendOutput(fmt.Sprintf("Process was aborted at %.0f%% completion", mv.progress.Value*100), "")
-		return
-	}
-
-	mv.showIdleMode()
-	mv.runOnUI(func() {
-		mv.progress.SetValue(1)
-		mv.startBtn.Enable()
-		mv.ipEntry.Enable()
-	})
+	return false
 }
 
 func cloneEnvConfig(src fs.EnvConfig) fs.EnvConfig {
@@ -215,18 +171,4 @@ func cloneEnvConfig(src fs.EnvConfig) fs.EnvConfig {
 		dst[key] = value
 	}
 	return dst
-}
-
-func (mv *mainView) showProgressMode() {
-	mv.runOnUI(func() {
-		mv.startBtn.Hide()
-		mv.progress.Show()
-	})
-}
-
-func (mv *mainView) showIdleMode() {
-	mv.runOnUI(func() {
-		mv.progress.Hide()
-		mv.startBtn.Show()
-	})
 }

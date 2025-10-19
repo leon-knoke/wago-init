@@ -1,5 +1,7 @@
 package install
 
+import "context"
+
 const DefaultIp = "192.168.42.42"
 
 type Parameters struct {
@@ -16,6 +18,7 @@ type Parameters struct {
 	ContainerImage    string
 	ContainerFlags    string
 	ConfigPath        string
+	Context           context.Context
 }
 
 var usersList = []string{"root", "admin", "user"}

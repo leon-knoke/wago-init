@@ -11,22 +11,21 @@ import (
 
 // mainView tracks the state of the primary application window.
 type mainView struct {
+	app                  fyne.App
 	window               fyne.Window
 	configValues         fs.EnvConfig
 	ipEntry              *widget.Entry
 	configPathEntry      *widget.Entry
 	startBtn             *widget.Button
-	progress             *widget.ProgressBar
-	outputEntry          *widget.Entry
-	outputScroll         *container.Scroll
-	outputText           string
-	outputUpdating       bool
 	passwordPrompt       func() (string, bool)
 	newPasswordPrompt    func() (string, bool)
 	containerSettingsBtn *widget.Button
 	awsSettingsBtn       *widget.Button
 	firmwareSettingsBtn  *widget.Button
 	deviceDiscoveryBtn   *widget.Button
+	sessions             []*installSession
+	sessionsBox          *fyne.Container
+	sessionsScroll       *container.Scroll
 }
 
 func BuildMainWindow() {
@@ -34,7 +33,7 @@ func BuildMainWindow() {
 	window := application.NewWindow("Wago Init")
 
 	configValues := loadInitialConfig()
-	view := newMainView(window, configValues)
+	view := newMainView(application, window, configValues)
 
 	view.buildContent()
 
@@ -42,12 +41,13 @@ func BuildMainWindow() {
 	window.ShowAndRun()
 }
 
-func newMainView(window fyne.Window, configValues fs.EnvConfig) *mainView {
+func newMainView(application fyne.App, window fyne.Window, configValues fs.EnvConfig) *mainView {
 	if configValues == nil {
 		configValues = fs.EnvConfig{}
 	}
 
 	return &mainView{
+		app:               application,
 		window:            window,
 		configValues:      configValues,
 		passwordPrompt:    passwordPromtFunc(window),

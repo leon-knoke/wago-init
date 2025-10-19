@@ -12,10 +12,16 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 	if err != nil {
 		return err
 	}
+	if err := checkCancellation(params.Context); err != nil {
+		return err
+	}
 	logFn("Starting process for IP: "+params.Ip, "")
 
 	err = CheckMacAddress(params, logFn)
 	if err != nil {
+		return err
+	}
+	if err := checkCancellation(params.Context); err != nil {
 		return err
 	}
 
@@ -26,9 +32,17 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 	}
 	params.CurrentPassword = password
 	logFn("Connection to device established", "")
+	defer client.Close()
+
+	if err := checkCancellation(params.Context); err != nil {
+		return err
+	}
 
 	err = CheckSerialNumber(client, logFn)
 	if err != nil {
+		return err
+	}
+	if err := checkCancellation(params.Context); err != nil {
 		return err
 	}
 
@@ -38,13 +52,16 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 		return errors.New("new password prompt cancelled by user")
 	}
 	logFn("Received new password from user", "")
+	if err := checkCancellation(params.Context); err != nil {
+		return err
+	}
 
 	err = ChangeUserPasswords(client, logFn, newPassword)
 	if err != nil {
 		return err
 	}
 
-	progressFn(0.05, 0.2)
+	progressFn(0.01, 0.01)
 
 	fwUpdateRequired, err := CheckFirmware(client, logFn, params.NewestFirmware)
 	if err != nil {
@@ -57,10 +74,16 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 			return err
 		}
 	}
+	if err := checkCancellation(params.Context); err != nil {
+		return err
+	}
 	progressFn(0.6, 0.64)
 
 	err = ConfigureServices(client, logFn)
 	if err != nil {
+		return err
+	}
+	if err := checkCancellation(params.Context); err != nil {
 		return err
 	}
 	progressFn(0.65, 0.99)
@@ -69,13 +92,17 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 	if err != nil {
 		return err
 	}
+	if err := checkCancellation(params.Context); err != nil {
+		return err
+	}
 
-	CopyPathToDevice(client, params.ConfigPath, "/root", logFn)
+	if err := CopyPathToDevice(client, params.Context, params.ConfigPath, "/root", logFn); err != nil {
+		return err
+	}
 
 	logFn("Installation complete.", "")
 	progressFn(1, 1)
 
-	client.Close()
 	return nil
 }
 

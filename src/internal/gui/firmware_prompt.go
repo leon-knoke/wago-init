@@ -29,8 +29,6 @@ func BuildFirmwarePrompt(configValues *fs.EnvConfig, w fyne.Window) *widget.Butt
 		forceFirmwareCheck := widget.NewCheck("Force Firmware Update", nil)
 		forceFirmwareCheck.SetChecked(values[fs.ForceFirmwareUpdate] == "true")
 
-		println("Check: ", values[fs.ForceFirmwareUpdate])
-
 		fileEntry := widget.NewEntry()
 		fileEntry.SetText(values[fs.FirmwarePath])
 		fileEntry.SetPlaceHolder("Select firmware update file (.wup)")

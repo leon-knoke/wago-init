@@ -2,6 +2,7 @@ package install
 
 import (
 	"archive/tar"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -18,7 +19,10 @@ const copyToDeviceTimeout = 20 * time.Minute
 // CopyPathToDevice replicates the contents of localPath onto remotePath using an existing SSH client.
 // localPath can point to either a single file or a directory. Directories are copied recursively.
 // Collected output is streamed through logFn so the user can monitor progress.
-func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn func(string, string)) error {
+func CopyPathToDevice(client *ssh.Client, ctx context.Context, localPath, remotePath string, logFn func(string, string)) error {
+	if err := checkCancellation(ctx); err != nil {
+		return err
+	}
 	localPath = filepath.Clean(localPath)
 	remotePath = strings.TrimSpace(remotePath)
 	if remotePath == "" {
@@ -54,7 +58,7 @@ func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn fu
 
 	streamErrCh := make(chan error, 1)
 	go func() {
-		err := streamLocalPathToTar(pipeWriter, localPath, info, logFn)
+		err := streamLocalPathToTar(ctx, pipeWriter, localPath, info, logFn)
 		if err != nil {
 			pipeWriter.CloseWithError(err)
 		} else {
@@ -91,6 +95,13 @@ func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn fu
 				_ = sess.Signal(ssh.SIGKILL)
 				_ = sess.Close()
 			}
+		case <-ctx.Done():
+			_ = sess.Signal(ssh.SIGKILL)
+			_ = sess.Close()
+			streamErr = ctx.Err()
+			streamDone = true
+			sessionErr = ctx.Err()
+			sessionDone = true
 		}
 	}
 
@@ -105,13 +116,19 @@ func CopyPathToDevice(client *ssh.Client, localPath, remotePath string, logFn fu
 	return nil
 }
 
-func streamLocalPathToTar(w io.Writer, basePath string, info os.FileInfo, logFn func(string, string)) error {
+func streamLocalPathToTar(ctx context.Context, w io.Writer, basePath string, info os.FileInfo, logFn func(string, string)) error {
+	if err := checkCancellation(ctx); err != nil {
+		return err
+	}
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
 	if info.IsDir() {
 		return filepath.Walk(basePath, func(path string, fileInfo os.FileInfo, err error) error {
 			if err != nil {
+				return err
+			}
+			if err := checkCancellation(ctx); err != nil {
 				return err
 			}
 			rel, err := filepath.Rel(basePath, path)
