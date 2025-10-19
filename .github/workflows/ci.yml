@@ -82,8 +82,8 @@ jobs:
         working-directory: ./src/cmd/wago-init
         shell: bash
         run: |
-          mkdir -p ../../build
-          zip -r "../../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" "wago-init.app"
+          mkdir -p ../../../build
+          zip -r "../../../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" "wago-init.app"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
