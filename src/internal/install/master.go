@@ -46,6 +46,11 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 		return err
 	}
 
+	err = CheckCalibrationData(client)
+	if err != nil {
+		return err
+	}
+
 	logFn("Asking for new user password", "")
 	newPassword, ok := params.PromptNewPassword()
 	if !ok {
