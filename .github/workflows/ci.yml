@@ -35,7 +35,7 @@ jobs:
             goos: darwin
             goarch: arm64
             fyne_target: darwin
-            ext: ".zip"
+            ext: ""
             ldflags: ""
 
     steps:
@@ -46,9 +46,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.2"
-
-      - name: Install fyne command
-        run: go install fyne.io/tools/cmd/fyne@latest
 
       - name: Install Linux build deps
         if: matrix.os == 'ubuntu-latest'
@@ -61,31 +58,18 @@ jobs:
         shell: bash
         run: go mod tidy
 
-      - name: Package app
-        if: matrix.os == 'macos-latest'
-        working-directory: ./src/cmd/wago-init
-        shell: bash
-        run: |
-          fyne package --target ${{ matrix.fyne_target }}
-          chmod +x wago-init.app/Contents/MacOS/wago-init
-
       - name: Build binary
-        if: matrix.os != 'macos-latest'
         working-directory: ./src
         shell: bash
         run: |
           mkdir -p ../build
+          OUTPUT="../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
           go build -ldflags "${{ matrix.ldflags }}" \
-            -o "../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" ./cmd/wago-init
-
-      - name: Archive macOS bundle
-        if: matrix.os == 'macos-latest'
-        working-directory: ./src/cmd/wago-init
-        shell: bash
-        run: |
-          mkdir -p ../../../build
-          ditto -c -k --keepParent "wago-init.app" "../../../build/wago-init-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+            -o "$OUTPUT" ./cmd/wago-init
+          if [ "${{ matrix.os }}" != "windows-latest" ]; then
+            chmod 755 "$OUTPUT"
+          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
