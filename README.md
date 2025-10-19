@@ -2,9 +2,9 @@
 -
 
 **Launch instructions**
-- **Windows:** download the Windows build, double-click the `.exe`, choose **More info**, then **Run anyway** when SmartScreen appears.
+- **Windows:** download the Windows build, double-click the `.exe`, choose **More info**, then **Run anyway** when Promt appears.
 - **Linux:** download the Linux build, open the file properties, enable **Allow executing file as program**, and launch the binary.
-- **macOS:** download the darwin bundle, open it once to trigger the warning, close the dialog, then go to **System Settings → Privacy & Security**, click **Open Anyway**, and confirm.
+- **macOS:** download the darwin build, open it once to trigger the warning, close the dialog, then go to **System Settings → Privacy & Security**, scroll down, click **Open Anyway**, and confirm.
 
 # wago-init
 
@@ -19,6 +19,7 @@ The application is built with Go and Fyne, features live logging and progress tr
 - **Service & container setup:** configure required system services, authenticate to AWS, and create the target Docker container with stored runtime flags.
 - **Config delivery:** copy prepared configuration directories to the controller over SSH using a tar-over-stdin transport.
 - **Operator UX:** live, timestamped log pane with replaceable status lines, progress bar animation, and clear error handling.
+- **Concurrency** Multiple devices can be set up and monitored simultaniously.
 
 ## Prerequisites
 - A workstation with basic OpenGL support.
@@ -34,7 +35,7 @@ The application is built with Go and Fyne, features live logging and progress tr
 5. Configure firmware source (revision target and `.wup` path) through **Firmware settings** if updates are required.
 6. Select the configuration folder to copy via the **Search** button next to the config path entry.
 7. Click **Start**, supply device passwords when prompted, and monitor the log output while the workflow runs.
-8. When the progress bar reaches 100% and the log reports **Done.**, disconnect the device or move to the next unit.
+8. When the progress bar reaches 100% and the log reports **Done.**, your device is now ready for production
 
 ## What happens when you click “Start”
 1. Connection and MAC validation of the target controller.
@@ -58,4 +59,4 @@ go build ./cmd/wago-init
 
 ## License
 
-This project is released under the MIT License. See [`LICENSE`](LICENSE) for details.
+This project is released under the Apache 2.0 License. See [`LICENSE`](LICENSE) for details.
