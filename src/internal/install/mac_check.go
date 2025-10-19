@@ -66,6 +66,7 @@ func pingOnce(ip string) error {
 	switch runtime.GOOS {
 	case "windows":
 		cmd = exec.Command("ping", "-n", "1", "-w", "1000", ip)
+		hideConsoleWindow(cmd)
 	default: // linux, darwin, others (POSIX-like)
 		cmd = exec.Command("ping", "-c", "1", "-W", "1", ip)
 	}
@@ -80,7 +81,9 @@ func lookupMAC(ip string) (string, error) {
 	var err error
 	switch runtime.GOOS {
 	case "windows":
-		out, err = exec.Command("arp", "-a", ip).CombinedOutput()
+		cmd := exec.Command("arp", "-a", ip)
+		hideConsoleWindow(cmd)
+		out, err = cmd.CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("arp failed: %s (output: %s)", err, strings.TrimSpace(string(out)))
 		}
