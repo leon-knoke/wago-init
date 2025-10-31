@@ -16,9 +16,9 @@ import (
 var (
 	DefaultSSHUser      = "root"
 	DefaultSSHPassword  = "wago"
-	sshTimeout          = 60 * time.Second
+	sshTimeout          = 90 * time.Second
 	shortSessionTimeout = 10 * time.Second
-	longSessionTimeout  = 60 * time.Second
+	longSessionTimeout  = 90 * time.Second
 )
 
 func InitSshClient(ip string, promptPassword func() (string, bool)) (*ssh.Client, string, error) {
