@@ -21,7 +21,7 @@ func (mv *mainView) buildContent() {
 	mv.setupStartButton()
 
 	ipLabel := widget.NewLabel("IP Address:")
-	ipControls := container.NewBorder(nil, nil, ipLabel, container.NewHBox(widget.NewLabel(" "), mv.deviceDiscoveryBtn), mv.ipEntry)
+	ipControls := container.NewBorder(nil, nil, ipLabel, mv.deviceDiscoveryBtn, mv.ipEntry)
 	settingsSection := container.NewVBox(
 		mv.firmwareSettingsBtn,
 		mv.containerSettingsBtn,
@@ -41,11 +41,13 @@ func (mv *mainView) buildContent() {
 	)
 
 	right := container.NewHBox(
-		widget.NewLabel("       "),
+		widget.NewSeparator(),
+		widget.NewLabel("  "),
+		widget.NewSeparator(),
 		settingsSection,
 	)
 
-	top := container.NewBorder(nil, nil, nil, right, left)
+	top := container.NewBorder(nil, widget.NewSeparator(), nil, right, left)
 
 	content := container.NewBorder(top, nil, nil, nil, mv.sessionsScroll)
 	mv.window.SetContent(content)
