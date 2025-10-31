@@ -54,15 +54,14 @@ func (mv *mainView) handleStart() {
 	}
 
 	params := install.Parameters{
-		Ip:                ip,
-		FirmwareRevision:  fwRevisionRaw,
-		PromptPassword:    mv.passwordPrompt,
-		PromptNewPassword: mv.newPasswordPrompt,
-		ContainerImage:    mv.configValues[fs.ContainerImage],
-		ContainerFlags:    install.BuildContainerCommand(mv.configValues[fs.ContainerCommand]),
-		NewestFirmware:    fwTarget,
-		FirmwarePath:      strings.TrimSpace(mv.configValues[fs.FirmwarePath]),
-		ForceFirmware:     strings.TrimSpace(mv.configValues[fs.ForceFirmwareUpdate]) == "true",
+		Ip:               ip,
+		FirmwareRevision: fwRevisionRaw,
+		PromptPassword:   mv.passwordPrompt,
+		ContainerImage:   mv.configValues[fs.ContainerImage],
+		ContainerFlags:   install.BuildContainerCommand(mv.configValues[fs.ContainerCommand]),
+		NewestFirmware:   fwTarget,
+		FirmwarePath:     strings.TrimSpace(mv.configValues[fs.FirmwarePath]),
+		ForceFirmware:    strings.TrimSpace(mv.configValues[fs.ForceFirmwareUpdate]) == "true",
 	}
 
 	updated := cloneEnvConfig(mv.configValues)
@@ -83,9 +82,8 @@ func (mv *mainView) handleStart() {
 	session := mv.newInstallSession(ip)
 	session.setStartUnlocker(unlockStart)
 
-	originalPasswordPrompt := params.PromptNewPassword
 	params.PromptNewPassword = func() (string, bool) {
-		value, ok := originalPasswordPrompt()
+		value, ok := mv.newPasswordPrompt(session)
 		if ok {
 			session.unlockStart()
 		}

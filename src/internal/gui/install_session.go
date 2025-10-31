@@ -49,6 +49,26 @@ type installSession struct {
 	logDialog   dialog.Dialog
 }
 
+func (s *installSession) macValue() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	text := s.macLabel.Text
+	if strings.HasPrefix(text, "MAC: ") {
+		return strings.TrimSpace(strings.TrimPrefix(text, "MAC: "))
+	}
+	return strings.TrimSpace(text)
+}
+
+func (s *installSession) serialValue() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	text := s.serialLabel.Text
+	if strings.HasPrefix(text, "Serial number: ") {
+		return strings.TrimSpace(strings.TrimPrefix(text, "Serial number: "))
+	}
+	return strings.TrimSpace(text)
+}
+
 func (mv *mainView) newInstallSession(ip string) *installSession {
 	ctx, cancel := context.WithCancel(context.Background())
 	session := &installSession{

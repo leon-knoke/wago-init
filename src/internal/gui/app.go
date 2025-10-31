@@ -18,7 +18,7 @@ type mainView struct {
 	configPathEntry      *widget.Entry
 	startBtn             *widget.Button
 	passwordPrompt       func() (string, bool)
-	newPasswordPrompt    func() (string, bool)
+	newPasswordPrompt    func(*installSession) (string, bool)
 	containerSettingsBtn *widget.Button
 	awsSettingsBtn       *widget.Button
 	firmwareSettingsBtn  *widget.Button

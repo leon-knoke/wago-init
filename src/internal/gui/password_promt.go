@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 )
@@ -52,8 +53,8 @@ func passwordPromtFunc(parent fyne.Window) func() (string, bool) {
 	}
 }
 
-func newPasswordPromtFunc(parent fyne.Window) func() (string, bool) {
-	return func() (string, bool) {
+func newPasswordPromtFunc(parent fyne.Window) func(*installSession) (string, bool) {
+	return func(session *installSession) (string, bool) {
 		resultCh := make(chan passwordResponse, 1)
 
 		fyne.Do(func() {
@@ -69,11 +70,33 @@ func newPasswordPromtFunc(parent fyne.Window) func() (string, bool) {
 					clip.SetContent(pwd)
 				}
 			})
+			copyMacBtn := widget.NewButton("MAC-Address", func() {
+				if session == nil {
+					return
+				}
+				if mac := session.macValue(); mac != "" {
+					if clip := GetClipboard(parent); clip != nil {
+						clip.SetContent(mac)
+					}
+				}
+			})
+			copySerialBtn := widget.NewButton("Serial-Number", func() {
+				if session == nil {
+					return
+				}
+				if serial := session.serialValue(); serial != "" {
+					if clip := GetClipboard(parent); clip != nil {
+						clip.SetContent(serial)
+					}
+				}
+			})
+			copyRow := container.NewHBox(copySerialBtn, copyMacBtn)
 			form := dialog.NewForm(
 				"New Password required.\nEnter a new secure Password for the device",
 				"Change Password",
 				"Cancel",
 				[]*widget.FormItem{
+					widget.NewFormItem("Copy to Clipboard", copyRow),
 					widget.NewFormItem("Password", entry),
 					widget.NewFormItem("", generateBtn),
 				},
