@@ -42,6 +42,8 @@ type installSession struct {
 	statusLabel *widget.Label
 	lastLog     *widget.Label
 	row         *fyne.Container
+	logEntry    *widget.Entry
+	logDialog   dialog.Dialog
 }
 
 func (mv *mainView) newInstallSession(ip string) *installSession {
@@ -129,21 +131,43 @@ func (s *installSession) appendLog(line, replaceIdentifier string) {
 		s.logLines = append(s.logLines, formatted)
 	}
 
+	var macUpdate, serialUpdate string
 	if strings.Contains(line, "Device MAC address:") {
 		if mac := parseMACFromLog(line); mac != "" {
-			s.mv.runOnUI(func() {
-				s.macLabel.SetText("MAC: " + mac)
-			})
+			macUpdate = mac
 		}
 	}
 	if strings.Contains(line, "Device serial number:") {
 		if serial := parseSerialFromLog(line); serial != "" {
-			s.mv.runOnUI(func() {
-				s.serialLabel.SetText("Serial number: " + serial)
-			})
+			serialUpdate = serial
 		}
 	}
+	logEntry := s.logEntry
 	s.mu.Unlock()
+
+	if macUpdate != "" {
+		s.mv.runOnUI(func() {
+			s.macLabel.SetText("MAC: " + macUpdate)
+		})
+	}
+	if serialUpdate != "" {
+		s.mv.runOnUI(func() {
+			s.serialLabel.SetText("Serial number: " + serialUpdate)
+		})
+	}
+
+	if logEntry != nil {
+		logText := s.logSnapshot()
+		s.mv.runOnUI(func() {
+			s.mu.Lock()
+			if s.logEntry != logEntry {
+				s.mu.Unlock()
+				return
+			}
+			s.mu.Unlock()
+			logEntry.SetText(logText)
+		})
+	}
 }
 
 func (s *installSession) setStatus(status string) {
@@ -173,13 +197,28 @@ func parseSerialFromLog(line string) string {
 }
 
 func (s *installSession) showLogs() {
-	text := s.logSnapshot()
 	s.mv.runOnUI(func() {
+		text := s.logSnapshot()
+
+		s.mu.Lock()
+		existingEntry := s.logEntry
+		existingDialog := s.logDialog
+		s.mu.Unlock()
+
+		if existingEntry != nil {
+			existingEntry.SetText(text)
+			if existingDialog != nil {
+				existingDialog.Show()
+			}
+			return
+		}
+
 		entry := widget.NewMultiLineEntry()
 		entry.SetText(text)
 		entry.OnChanged = func(value string) {
-			if value != text {
-				entry.SetText(text)
+			current := s.logSnapshot()
+			if value != current {
+				entry.SetText(current)
 			}
 		}
 		entry.Wrapping = fyne.TextWrapWord
@@ -188,7 +227,24 @@ func (s *installSession) showLogs() {
 		scroll := container.NewVScroll(entry)
 		scroll.SetMinSize(fyne.NewSize(1000, 400))
 
-		dialog.NewCustom("Logs for "+s.ip, "Close", scroll, s.mv.window).Show()
+		dlg := dialog.NewCustom("Logs for "+s.ip, "Close", scroll, s.mv.window)
+		dlg.SetOnClosed(func() {
+			s.mv.runOnUI(func() {
+				s.mu.Lock()
+				if s.logEntry == entry {
+					s.logEntry = nil
+					s.logDialog = nil
+				}
+				s.mu.Unlock()
+			})
+		})
+
+		s.mu.Lock()
+		s.logEntry = entry
+		s.logDialog = dlg
+		s.mu.Unlock()
+
+		dlg.Show()
 	})
 }
 
