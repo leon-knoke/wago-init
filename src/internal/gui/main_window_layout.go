@@ -20,14 +20,32 @@ func (mv *mainView) buildContent() {
 	mv.setupSessionsArea()
 	mv.setupStartButton()
 
-	ipRow := mv.buildIPRow()
-	configRow := mv.buildConfigRow()
-
-	top := container.NewVBox(
-		ipRow,
-		configRow,
-		container.NewHBox(mv.startBtn),
+	ipLabel := widget.NewLabel("IP Address:")
+	ipControls := container.NewBorder(nil, nil, ipLabel, container.NewHBox(widget.NewLabel(" "), mv.deviceDiscoveryBtn), mv.ipEntry)
+	settingsSection := container.NewVBox(
+		mv.firmwareSettingsBtn,
+		mv.containerSettingsBtn,
+		mv.awsSettingsBtn,
 	)
+
+	searchBtn := widget.NewButton("Search", mv.openConfigFolderDialog)
+	entryContainer := container.NewBorder(nil, nil, nil, searchBtn, mv.configPathEntry)
+
+	// ipRow := container.NewBorder(nil, nil, ipLabel, right, ipControls)
+	configRow := container.NewBorder(nil, nil, widget.NewLabel("Copy path: "), nil, entryContainer)
+
+	left := container.NewVBox(
+		ipControls,
+		configRow,
+		mv.startBtn,
+	)
+
+	right := container.NewHBox(
+		widget.NewLabel("       "),
+		settingsSection,
+	)
+
+	top := container.NewBorder(nil, nil, nil, right, left)
 
 	content := container.NewBorder(top, nil, nil, nil, mv.sessionsScroll)
 	mv.window.SetContent(content)
@@ -58,26 +76,6 @@ func (mv *mainView) setupSessionsArea() {
 
 func (mv *mainView) setupStartButton() {
 	mv.startBtn = widget.NewButton("Start", mv.handleStart)
-}
-
-func (mv *mainView) buildIPRow() fyne.CanvasObject {
-	ipLabel := widget.NewLabel("IP Address  ")
-	ipControls := container.NewBorder(nil, nil, nil, container.NewHBox(widget.NewLabel(" "), mv.deviceDiscoveryBtn), mv.ipEntry)
-	right := container.NewHBox(
-		widget.NewLabel("  "),
-		mv.containerSettingsBtn,
-		widget.NewLabel("  "),
-		mv.awsSettingsBtn,
-		widget.NewLabel("  "),
-		mv.firmwareSettingsBtn,
-	)
-	return container.NewBorder(nil, nil, ipLabel, right, ipControls)
-}
-
-func (mv *mainView) buildConfigRow() fyne.CanvasObject {
-	searchBtn := widget.NewButton("Search", mv.openConfigFolderDialog)
-	entryContainer := container.NewBorder(nil, nil, nil, searchBtn, mv.configPathEntry)
-	return container.NewBorder(nil, nil, widget.NewLabel("Config path"), nil, entryContainer)
 }
 
 func (mv *mainView) openConfigFolderDialog() {

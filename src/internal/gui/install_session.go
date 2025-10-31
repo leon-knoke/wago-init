@@ -15,10 +15,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-const (
-	unknownMAC            = "--"
-	progressDelayInterval = 12090 * time.Millisecond
-)
+const progressDelayInterval = 12090 * time.Millisecond
 
 type installSession struct {
 	mv *mainView
