@@ -105,7 +105,11 @@ func (s *installSession) unlockStart() {
 
 func (s *installSession) appendLog(line, replaceIdentifier string) {
 	s.mv.runOnUI(func() {
-		s.lastLog.SetText(line)
+		if len(line) > 175 {
+			s.lastLog.SetText(line[:171] + " ...")
+		} else {
+			s.lastLog.SetText(line)
+		}
 	})
 	formatted := fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), line)
 
