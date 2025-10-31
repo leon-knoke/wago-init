@@ -46,7 +46,7 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 		return err
 	}
 
-	err = CheckCalibrationData(client)
+	err = ValidateCalibrationData(client)
 	if err != nil {
 		return err
 	}
@@ -58,11 +58,6 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 	}
 	logFn("Received new password from user", "")
 	if err := checkCancellation(params.Context); err != nil {
-		return err
-	}
-
-	err = ChangeUserPasswords(client, logFn, newPassword)
-	if err != nil {
 		return err
 	}
 
@@ -82,6 +77,12 @@ func Install(installParameters Parameters, logFn func(string, string), progressF
 	if err := checkCancellation(params.Context); err != nil {
 		return err
 	}
+
+	err = ChangeUserPasswords(client, logFn, newPassword)
+	if err != nil {
+		return err
+	}
+
 	progressFn(0.6, 0.64)
 
 	err = ConfigureServices(client, logFn)
