@@ -93,6 +93,16 @@ Loop:
 			processed := atomic.AddInt64(&processedCount, 1)
 			if allowed {
 				found := atomic.AddInt64(&foundCount, 1)
+				if err := install.PingOnce(ip); err != nil {
+					processed := atomic.AddInt64(&processedCount, 1)
+					updateStatus(fmt.Sprintf(
+						"Scanning (%d/%d)... last error: %v",
+						processed,
+						total,
+						err,
+					))
+					return
+				}
 				appendDevice(ip, mac, processed, found)
 			} else {
 				updateStatus(fmt.Sprintf("Scanning (%d/%d)...", processed, total))

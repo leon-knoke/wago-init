@@ -17,7 +17,7 @@ var allowedOUIs = []string{
 func CheckMacAddress(installParameters Parameters, logFn func(string, string)) error {
 	ip := installParameters.Ip
 
-	if err := pingOnce(ip); err != nil {
+	if err := PingOnce(ip); err != nil {
 		logFn("Ping attempt failed, device might be offline: "+err.Error(), "")
 	}
 
@@ -34,7 +34,7 @@ func CheckMacAddress(installParameters Parameters, logFn func(string, string)) e
 }
 
 func DiscoverDeviceMAC(ip string) (string, bool, error) {
-	pingErr := pingOnce(ip)
+	pingErr := PingOnce(ip)
 
 	mac, err := lookupMAC(ip)
 	if err != nil {
@@ -61,7 +61,7 @@ func isAllowedOUI(mac string) bool {
 	return false
 }
 
-func pingOnce(ip string) error {
+func PingOnce(ip string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
