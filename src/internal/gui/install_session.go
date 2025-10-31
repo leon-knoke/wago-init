@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -40,6 +42,7 @@ type installSession struct {
 	logBtn      *widget.Button
 	actionBtn   *widget.Button
 	statusLabel *widget.Label
+	statusBadge *canvas.Text
 	lastLog     *widget.Label
 	row         *fyne.Container
 	logEntry    *widget.Entry
@@ -74,11 +77,13 @@ func (mv *mainView) newInstallSession(ip string) *installSession {
 	})
 
 	session.statusLabel = widget.NewLabel("Running")
+	session.statusBadge = canvas.NewText("", theme.Color(theme.ColorNameError))
+	session.statusBadge.TextStyle = fyne.TextStyle{Bold: true}
+	session.statusBadge.Hide()
 	session.lastLog = widget.NewLabel("")
 
-	// bottom := container.NewVBox(session.lastLog, widget.NewSeparator())
-
-	statusRow := container.NewBorder(nil, nil, session.statusLabel, session.lastLog)
+	statusLeft := container.NewHBox(session.statusBadge, session.statusLabel)
+	statusRow := container.NewBorder(nil, nil, statusLeft, session.lastLog)
 
 	top := container.NewBorder(nil, nil, container.NewHBox(session.ipLabel, session.macLabel, session.serialLabel), container.NewHBox(session.logBtn, session.actionBtn))
 	bottom := container.NewVBox(statusRow, widget.NewSeparator())
@@ -175,6 +180,13 @@ func (s *installSession) setStatus(status string) {
 	s.status = status
 	s.mv.runOnUI(func() {
 		s.statusLabel.SetText(status)
+		if status != "Failed" {
+			s.statusBadge.Hide()
+			s.statusBadge.Refresh()
+		} else {
+			s.statusLabel.Hide()
+			s.statusLabel.Refresh()
+		}
 	})
 	s.mu.Unlock()
 
@@ -295,6 +307,12 @@ func (s *installSession) reportFailure(err error) {
 	s.unlockStart()
 	s.appendLog("Error: "+err.Error(), "")
 	s.setStatus("Failed")
+	s.mv.runOnUI(func() {
+		s.statusBadge.Text = "  DEVICE SETUP FAILED!"
+		s.statusBadge.Color = theme.Color(theme.ColorNameError)
+		s.statusBadge.Show()
+		s.statusBadge.Refresh()
+	})
 	s.finish()
 }
 

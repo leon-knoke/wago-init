@@ -2,6 +2,7 @@ package install
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -168,6 +169,10 @@ func writeTarEntry(tw *tar.Writer, fullPath, rel string, info os.FileInfo, logFn
 		header.Name += "/"
 	}
 
+	if mode.IsRegular() && shouldMarkExecutable(fullPath, info) {
+		header.Mode = (header.Mode &^ 0o777) | 0o755
+	}
+
 	if err := tw.WriteHeader(header); err != nil {
 		return fmt.Errorf("write header for '%s': %w", fullPath, err)
 	}
@@ -189,4 +194,38 @@ func writeTarEntry(tw *tar.Writer, fullPath, rel string, info os.FileInfo, logFn
 	}
 
 	return nil
+}
+
+func shouldMarkExecutable(fullPath string, info os.FileInfo) bool {
+	if info.Mode().Perm()&0o111 != 0 {
+		return false
+	}
+
+	ext := strings.ToLower(filepath.Ext(fullPath))
+	switch ext {
+	case ".sh", ".bash", ".bin", ".run", ".php":
+		return true
+	}
+
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	buf := make([]byte, 4)
+	n, err := io.ReadFull(file, buf)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return false
+	}
+
+	if n >= 2 && buf[0] == '#' && buf[1] == '!' {
+		return true
+	}
+
+	if n == 4 && bytes.Equal(buf, []byte{0x7f, 'E', 'L', 'F'}) {
+		return true
+	}
+
+	return false
 }

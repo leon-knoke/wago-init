@@ -73,3 +73,13 @@ func loadInitialConfig() fs.EnvConfig {
 func (mv *mainView) runOnUI(fn func()) {
 	fyne.Do(fn)
 }
+
+func GetClipboard(window fyne.Window) fyne.Clipboard {
+	if window == nil {
+		return nil
+	}
+	if app := fyne.CurrentApp(); app != nil {
+		return app.Clipboard()
+	}
+	return nil
+}

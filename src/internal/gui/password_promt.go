@@ -65,7 +65,7 @@ func newPasswordPromtFunc(parent fyne.Window) func() (string, bool) {
 					return
 				}
 				entry.SetText(pwd)
-				if clip := parent.Clipboard(); clip != nil {
+				if clip := GetClipboard(parent); clip != nil {
 					clip.SetContent(pwd)
 				}
 			})
