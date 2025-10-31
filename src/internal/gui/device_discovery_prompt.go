@@ -13,6 +13,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+var searchEntry string
+
 func BuildDeviceDiscoveryPrompt(mv *mainView) *widget.Button {
 	return widget.NewButton("Device discovery", func() {
 		mv.showDeviceDiscoveryDialog()
@@ -21,6 +23,7 @@ func BuildDeviceDiscoveryPrompt(mv *mainView) *widget.Button {
 
 func (mv *mainView) showDeviceDiscoveryDialog() {
 	input := widget.NewEntry()
+	input.SetText(searchEntry)
 	input.SetPlaceHolder("192.168.42.42  or  10.0.1.*  or  172.16.1.0/25  or  10.2.1.20 - 10.2.1.60")
 
 	networkOptions := discoverHostNetworks()
@@ -38,11 +41,16 @@ func (mv *mainView) showDeviceDiscoveryDialog() {
 	}
 
 	status := widget.NewLabel("Idle")
-	devices := make([]discoveredDevice, 0)
+	// Use pointer to mainView's cache for device list
+	devices := &mv.deviceDiscoveryCache
+
+	sortDevices := func() {
+		sortDiscoveredDevices(devices)
+	}
 
 	table := widget.NewTable(
 		func() (int, int) {
-			return len(devices) + 1, 2
+			return len(*devices) + 1, 2
 		},
 		func() fyne.CanvasObject {
 			return widget.NewLabel("")
@@ -62,13 +70,13 @@ func (mv *mainView) showDeviceDiscoveryDialog() {
 
 			label.TextStyle = fyne.TextStyle{}
 			idx := id.Row - 1
-			if idx < 0 || idx >= len(devices) {
+			if idx < 0 || idx >= len(*devices) {
 				label.SetText("")
 				label.Refresh()
 				return
 			}
 
-			device := devices[idx]
+			device := (*devices)[idx]
 			if id.Col == 0 {
 				label.SetText(device.IP)
 			} else {
@@ -88,14 +96,14 @@ func (mv *mainView) showDeviceDiscoveryDialog() {
 	)
 
 	table.OnSelected = func(id widget.TableCellID) {
-		if id.Row == 0 || id.Row-1 >= len(devices) {
+		if id.Row == 0 || id.Row-1 >= len(*devices) {
 			return
 		}
 		if scanCancel != nil {
 			scanCancel()
 			scanCancel = nil
 		}
-		device := devices[id.Row-1]
+		device := (*devices)[id.Row-1]
 		mv.ipEntry.SetText(device.IP)
 		if mv.configValues == nil {
 			mv.configValues = fs.EnvConfig{}
@@ -116,10 +124,12 @@ func (mv *mainView) showDeviceDiscoveryDialog() {
 	scanBtn = widget.NewButton("Scan", nil)
 
 	refreshTable := func() {
+		sortDevices()
 		table.Refresh()
 	}
 
 	scan := func() {
+		searchEntry = input.Text
 		pattern := strings.TrimSpace(input.Text)
 		ips, err := expandIPPattern(pattern)
 		if err != nil {
@@ -135,7 +145,8 @@ func (mv *mainView) showDeviceDiscoveryDialog() {
 			scanCancel = nil
 		}
 		selected = false
-		devices = devices[:0]
+		// Clear and reuse the cache slice
+		*devices = (*devices)[:0]
 		refreshTable()
 		scanBtn.Disable()
 		status.SetText(fmt.Sprintf("Scanning %d addresses...", len(ips)))
@@ -144,7 +155,7 @@ func (mv *mainView) showDeviceDiscoveryDialog() {
 		scanCancel = cancel
 
 		go func() {
-			mv.runDeviceScan(ctx, ips, &devices, table, status, scanBtn, &selected)
+			mv.runDeviceScan(ctx, ips, devices, table, status, scanBtn, &selected)
 			mv.runOnUI(func() {
 				if scanCancel != nil {
 					scanCancel = nil
@@ -159,6 +170,8 @@ func (mv *mainView) showDeviceDiscoveryDialog() {
 	topRow := container.NewBorder(nil, scanBtn, nil, nil, inputRow)
 	layout := container.NewBorder(topRow, status, nil, nil, container.NewMax(table))
 
+	refreshTable()
+
 	dlg = dialog.NewCustom(deviceDiscoveryTitle, "Close", layout, mv.window)
 	dlg.SetOnClosed(func() {
 		if scanCancel != nil {
@@ -166,6 +179,6 @@ func (mv *mainView) showDeviceDiscoveryDialog() {
 			scanCancel = nil
 		}
 	})
-	dlg.Resize(fyne.NewSize(720, 400))
+	dlg.Resize(fyne.NewSize(720, 500))
 	dlg.Show()
 }

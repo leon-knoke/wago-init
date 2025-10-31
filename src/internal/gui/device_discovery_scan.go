@@ -41,6 +41,7 @@ func (mv *mainView) runDeviceScan(
 	appendDevice := func(ip, mac string, processed, found int64) {
 		mv.runOnUI(func() {
 			*devices = append(*devices, discoveredDevice{IP: ip, MAC: mac})
+			sortDiscoveredDevices(devices)
 			if selected == nil || !*selected {
 				status.SetText(fmt.Sprintf(
 					"Found %d device(s). Scanning (%d/%d)...",

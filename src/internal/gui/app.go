@@ -26,6 +26,7 @@ type mainView struct {
 	sessions             []*installSession
 	sessionsBox          *fyne.Container
 	sessionsScroll       *container.Scroll
+	deviceDiscoveryCache []discoveredDevice
 }
 
 func BuildMainWindow() {
